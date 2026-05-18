@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="经管会分月指标录入与双轴图表生成工具" />
+  <title>经管会报告整理工具</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #fff;
+      --primary: #1a4a8c;
+      --accent: #03a9f4;
+      --border: #e4e7ed;
+      --text: #303133;
+      --muted: #909399;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(135deg, #1a4a8c 0%, #2d6cb5 100%);
+      color: #fff;
+      padding: 20px 28px;
+      box-shadow: 0 2px 8px rgba(26, 74, 140, 0.25);
+    }
+    header h1 { font-size: 22px; font-weight: 600; }
+    header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+    .container { max-width: 1440px; margin: 0 auto; padding: 20px; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      background: var(--card);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .toolbar label { font-size: 13px; color: var(--muted); margin-right: 4px; }
+    .btn {
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .88; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: #eef2f7; color: var(--text); }
+    .btn-accent { background: var(--accent); color: #fff; }
+    input[type="file"] { display: none; }
+    .file-label {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #eef2f7;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .file-label:hover { background: #e2e8f0; }
+    select {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .panel {
+      background: var(--card);
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .table-wrap {
+      overflow: auto;
+      max-height: 420px;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 1200px;
+    }
+    table.data-table th,
+    table.data-table td {
+      border: 1px solid var(--border);
+      padding: 4px 6px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    table.data-table th {
+      background: #f5f7fa;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      font-weight: 500;
+    }
+    table.data-table th.col-month,
+    table.data-table td.col-month {
+      text-align: center;
+      position: sticky;
+      left: 36px;
+      background: #fff;
+      z-index: 2;
+      box-shadow: 2px 0 4px rgba(0,0,0,.04);
+    }
+    table.data-table th.col-month { background: #f5f7fa; z-index: 3; }
+    table.data-table th.col-ops,
+    table.data-table td.col-ops {
+      position: sticky;
+      left: 0;
+      z-index: 4;
+      box-shadow: 2px 0 4px rgba(0,0,0,.04);
+    }
+    table.data-table input {
+      width: 72px;
+      border: 1px solid transparent;
+      padding: 2px 4px;
+      font-size: 12px;
+      text-align: right;
+      background: transparent;
+    }
+    table.data-table input:focus {
+      border-color: var(--accent);
+      outline: none;
+      background: #f0f9ff;
+    }
+    table.data-table .col-month input { width: 84px; text-align: center; }
+    table.data-table input.cell-calc {
+      background: #f0f9eb;
+      color: #606266;
+      cursor: default;
+    }
+    table.data-table input.cell-calc:focus {
+      border-color: transparent;
+      background: #f0f9eb;
+    }
+    table.data-table .col-ops {
+      width: 36px;
+      text-align: center;
+      padding: 2px;
+      background: #fafbfc;
+    }
+    table.data-table th.col-ops { background: #f5f7fa; z-index: 4; }
+    table.data-table .col-ops input[type="checkbox"] { cursor: pointer; }
+    .btn-icon {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 4px;
+      color: var(--muted);
+    }
+    .btn-icon:hover { background: #fee; color: #f56c6c; }
+    .btn-icon-add:hover { background: #e8f5e9; color: #67c23a; }
+    th.th-metric { position: relative; }
+    th.th-metric .btn-del-col {
+      position: absolute;
+      right: 2px;
+      top: 2px;
+      font-size: 11px;
+      padding: 0 4px;
+      line-height: 16px;
+    }
+    .table-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .table-actions .sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+    .btn-danger { background: #fef0f0; color: #f56c6c; }
+    .btn-danger:hover { background: #fde2e2; }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(640px, 1fr));
+      gap: 16px;
+    }
+    .chart-card {
+      background: var(--card);
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      overflow: hidden;
+    }
+    .chart-card-head {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+    .chart-box { width: 100%; height: 380px; }
+    .empty-hint {
+      text-align: center;
+      padding: 48px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .status { font-size: 12px; color: var(--muted); margin-left: auto; }
+    @media print {
+      header, .toolbar, .panel, .chart-card-head .btn { display: none !important; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .chart-box { height: 360px; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>经管会报告整理工具</h1>
+    <p>录入各指标分月数据，一键生成双轴柱状+折线图（样式对齐经管会标准图表）</p>
+  </header>
+
+  <div class="container">
+    <div class="toolbar">
+      <label for="excelFile" class="file-label">导入 Excel (.xlsx)</label>
+      <input type="file" id="excelFile" accept=".xlsx,.xls" />
+      <button class="btn btn-secondary" id="btnLoadSample">加载示例数据</button>
+      <button class="btn btn-primary" id="btnGenerate">生成图表</button>
+      <button class="btn btn-accent" id="btnExportAll">导出全部 PNG</button>
+      <button class="btn btn-secondary" onclick="window.print()">打印报告</button>
+      <label style="margin-left:8px">展示指标：</label>
+      <select id="metricFilter">
+        <option value="all">全部 9 项</option>
+      </select>
+      <span class="status" id="statusText">就绪</span>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span>数据录入表 <small style="font-weight:400;color:var(--muted)">（填写去年/当年后自动算环比、同比，浅绿列为只读）</small></span>
+        <div class="table-actions">
+          <button class="btn btn-secondary" id="btnAddRow" type="button">+ 增行</button>
+          <button class="btn btn-danger" id="btnDelRows" type="button">− 删选中行</button>
+          <span class="sep"></span>
+          <button class="btn btn-secondary" id="btnAddMetric" type="button">+ 增指标列</button>
+          <select id="delMetricSelect" title="选择要删除的指标"></select>
+          <button class="btn btn-danger" id="btnDelMetric" type="button">− 删指标列</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="dataTable"></table>
+      </div>
+    </section>
+
+    <section id="chartsSection">
+      <div class="empty-hint" id="emptyHint">录入数据后点击「生成图表」</div>
+      <div class="charts-grid" id="chartsGrid" style="display:none"></div>
+    </section>
+  </div>
+
+  <script>
+    const DEFAULT_METRICS = [
+      { name: 'AIGC内容日均发布量', type: 'count' },
+      { name: 'AIGC内容分发率', type: 'rate' },
+      { name: 'UGC日均发布量', type: 'count' },
+      { name: 'AIGC内容千曝互动率', type: 'rate' },
+      { name: 'AIGC内容千曝阅读时长', type: 'duration' },
+      { name: 'AIGC内容千曝负反馈率', type: 'rate' },
+      { name: 'UGC内容千曝互动率', type: 'rate' },
+      { name: 'UGC内容千曝阅读时长', type: 'duration' },
+      { name: 'UGC内容千曝负反馈率', type: 'rate' },
+    ];
+
+    const COLORS = {
+      lastYear: '#1a4a8c',
+      currentYear: '#4fc3f7',
+      mom: '#26a69a',
+      yoy: '#ff9800',
+    };
+
+    const MONTH_KEY = 'month';
+    let metrics = DEFAULT_METRICS.map(m => ({ ...m }));
+    let tableData = [];
+    let chartInstances = [];
+    let selectedRows = new Set();
+    let resizeHandler = null;
+
+    function getHeaders() {
+      return [
+        MONTH_KEY,
+        ...metrics.flatMap(m => [
+          `去年${m.name}`,
+          `当年${m.name}`,
+          `${m.name}环比上月`,
+          `${m.name}同比`,
+        ]),
+      ];
+    }
+
+    function metricColKeys(name) {
+      return [
+        `去年${name}`,
+        `当年${name}`,
+        `${name}环比上月`,
+        `${name}同比`,
+      ];
+    }
+
+    function keysForMetric(name) {
+      return {
+        last: `去年${name}`,
+        cur: `当年${name}`,
+        mom: `${name}环比上月`,
+        yoy: `${name}同比`,
+      };
+    }
+
+    function emptyRow(month = '') {
+      const row = { [MONTH_KEY]: month };
+      getHeaders().slice(1).forEach(h => { row[h] = null; });
+      return row;
+    }
+
+    function normalizeRow(row) {
+      const out = { [MONTH_KEY]: row[MONTH_KEY] ?? row['月份'] ?? '' };
+      getHeaders().slice(1).forEach(h => {
+        out[h] = row[h] != null ? row[h] : null;
+      });
+      return out;
+    }
+
+    function nextMonthAfter(last) {
+      if (!last || !/^\d{4}-\d{2}$/.test(last)) return '';
+      const [y, m] = last.split('-').map(Number);
+      const d = new Date(y, m, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function refreshMetricSelects() {
+      const delSel = document.getElementById('delMetricSelect');
+      const filterSel = document.getElementById('metricFilter');
+      const filterVal = filterSel.value;
+
+      delSel.innerHTML = metrics.map(m =>
+        `<option value="${m.name}">${m.name}</option>`
+      ).join('');
+
+      filterSel.innerHTML = '<option value="all">全部 ' + metrics.length + ' 项</option>' +
+        metrics.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+
+      if (filterVal === 'all' || metrics.some(m => m.name === filterVal)) {
+        filterSel.value = filterVal;
+      }
+    }
+
+    function addMetric() {
+      const name = prompt('请输入指标名称（将自动增加「去年/当年/环比/同比」4 列）', '');
+      if (!name?.trim()) return;
+      const trimmed = name.trim();
+      if (metrics.some(m => m.name === trimmed)) {
+        alert('该指标已存在');
+        return;
+      }
+      const type = prompt('指标类型：count=数量 / rate=比率 / duration=时长', 'count') || 'count';
+      const validTypes = ['count', 'rate', 'duration'];
+      metrics.push({ name: trimmed, type: validTypes.includes(type) ? type : 'count' });
+      tableData = tableData.map(normalizeRow);
+      recalcDerivedFields();
+      refreshMetricSelects();
+      renderTable();
+      setStatus(`已添加指标「${trimmed}」`);
+    }
+
+    function removeMetric(name) {
+      if (!name) return;
+      if (metrics.length <= 1) {
+        alert('至少保留 1 个指标列');
+        return;
+      }
+      if (!confirm(`确定删除指标「${name}」及其 4 列数据？`)) return;
+      const keys = metricColKeys(name);
+      metrics = metrics.filter(m => m.name !== name);
+      tableData = tableData.map(row => {
+        const r = normalizeRow(row);
+        keys.forEach(k => delete r[k]);
+        return r;
+      });
+      recalcDerivedFields();
+      refreshMetricSelects();
+      renderTable();
+      setStatus(`已删除指标「${name}」`);
+    }
+
+    function addRow() {
+      readTableFromDom();
+      const last = tableData[tableData.length - 1];
+      const nextMonth = nextMonthAfter(last?.[MONTH_KEY]);
+      tableData.push(emptyRow(nextMonth));
+      recalcDerivedFields();
+      renderTable();
+      setStatus(`已增加 1 行，共 ${tableData.length} 行`);
+    }
+
+    function deleteSelectedRows() {
+      readTableFromDom();
+      if (!selectedRows.size) {
+        alert('请先勾选要删除的行');
+        return;
+      }
+      if (!confirm(`确定删除选中的 ${selectedRows.size} 行？`)) return;
+      tableData = tableData.filter((_, i) => !selectedRows.has(i));
+      selectedRows.clear();
+      if (!tableData.length) tableData = [emptyRow()];
+      recalcDerivedFields();
+      renderTable();
+      setStatus(`已删除，剩余 ${tableData.length} 行`);
+    }
+
+    function deleteRowAt(index) {
+      readTableFromDom();
+      if (tableData.length <= 1) {
+        alert('至少保留 1 行');
+        return;
+      }
+      tableData.splice(index, 1);
+      selectedRows = new Set([...selectedRows].filter(i => i !== index).map(i => (i > index ? i - 1 : i)));
+      recalcDerivedFields();
+      renderTable();
+      setStatus(`已删除第 ${index + 1} 行`);
+    }
+
+    function fmtPct(v) {
+      if (v == null || Number.isNaN(v)) return '';
+      return (v * 100).toFixed(2) + '%';
+    }
+
+    function parseInput(v) {
+      if (v == null || v === '' || v === '/' || v === '-') return null;
+      const s = String(v).trim().replace(/%/g, '');
+      if (['#VALUE!', '#DIV/0!', '#N/A'].includes(s)) return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function formatCalcValue(v) {
+      if (v == null || Number.isNaN(v)) return '';
+      const s = Number(v).toPrecision(6).replace(/\.?0+$/, '');
+      return s;
+    }
+
+    function calcChangeRate(cur, base) {
+      if (cur == null || base == null || base === 0) return null;
+      return (cur - base) / base;
+    }
+
+    function sortRowsByMonth(rows) {
+      return [...rows].sort((a, b) => String(a[MONTH_KEY] || '').localeCompare(String(b[MONTH_KEY] || '')));
+    }
+
+    /** 环比：当年 vs 上月当年；同比：(当年-去年)/去年 */
+    function recalcDerivedFields() {
+      const sorted = sortRowsByMonth(tableData.filter(r => r[MONTH_KEY]));
+      metrics.forEach(m => {
+        const k = keysForMetric(m.name);
+        sorted.forEach((row, i) => {
+          const cur = row[k.cur];
+          const last = row[k.last];
+          row[k.yoy] = calcChangeRate(cur, last);
+          const prevCur = i > 0 ? sorted[i - 1][k.cur] : null;
+          row[k.mom] = calcChangeRate(cur, prevCur);
+        });
+      });
+    }
+
+    function syncCalcCellsToDom() {
+      document.querySelectorAll('#dataTable input[data-calc]').forEach(inp => {
+        const r = +inp.dataset.r;
+        const c = inp.dataset.c;
+        if (!tableData[r]) return;
+        inp.value = formatCalcValue(tableData[r][c]);
+      });
+    }
+
+    function isCalcColumn(col) {
+      return col.endsWith('环比上月') || col.endsWith('同比');
+    }
+
+    function disposeAllCharts() {
+      chartInstances.forEach(({ chart }) => {
+        try { chart.dispose(); } catch (_) { /* ignore */ }
+      });
+      chartInstances = [];
+      if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler);
+        resizeHandler = null;
+      }
+    }
+
+    function barDisplay(v, type) {
+      if (v == null) return null;
+      if (type === 'rate') return v * 100;
+      return v;
+    }
+
+    function barAxisLabel(type) {
+      if (type === 'rate') return v => v.toFixed(1) + '%';
+      if (type === 'duration') return v => v.toFixed(1);
+      return v => (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(Math.round(v)));
+    }
+
+    function buildChartOption(metric, rows) {
+      const { name, type } = metric;
+      const k = keysForMetric(name);
+      const months = rows.map(r => r[MONTH_KEY]);
+      const lastYear = rows.map(r => barDisplay(r[k.last], type));
+      const currentYear = rows.map(r => barDisplay(r[k.cur], type));
+      const mom = rows.map(r => r[k.mom] != null ? r[k.mom] * 100 : null);
+      const yoy = rows.map(r => r[k.yoy] != null ? r[k.yoy] * 100 : null);
+
+      const barMax = Math.max(
+        ...lastYear.filter(v => v != null),
+        ...currentYear.filter(v => v != null),
+        1
+      );
+      const lineVals = [...mom, ...yoy].filter(v => v != null);
+      const lineAbsMax = lineVals.length ? Math.max(...lineVals.map(Math.abs)) : 100;
+      const lineMax = Math.ceil(Math.max(lineAbsMax * 1.3, 50) / 50) * 50;
+      const lineMin = -lineMax;
+
+      return {
+        backgroundColor: '#fff',
+        title: {
+          text: name,
+          left: 'center',
+          top: 8,
+          textStyle: { fontSize: 16, fontWeight: 600, color: '#303133' },
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          formatter(params) {
+            let html = `<strong>${params[0].axisValue}</strong><br/>`;
+            params.forEach(p => {
+              let val = p.value;
+              if (p.seriesName.includes('环比') || p.seriesName.includes('同比')) {
+                val = val != null ? val.toFixed(2) + '%' : '-';
+              } else if (type === 'rate') {
+                val = val != null ? val.toFixed(2) + '%' : '-';
+              } else {
+                val = val != null ? (type === 'duration' ? val.toFixed(2) : Math.round(val)) : '-';
+              }
+              html += `${p.marker}${p.seriesName}: ${val}<br/>`;
+            });
+            return html;
+          },
+        },
+        legend: {
+          data: [`去年${name}`, `当年${name}`, `${name}环比上月`, `${name}同比`],
+          top: 36,
+          left: 'center',
+          itemGap: 16,
+          textStyle: { fontSize: 11 },
+        },
+        grid: { left: 58, right: 68, top: 78, bottom: 42 },
+        xAxis: {
+          type: 'category',
+          data: months,
+          axisLabel: { fontSize: 11, color: '#606266' },
+          axisLine: { lineStyle: { color: '#dcdfe6' } },
+        },
+        yAxis: [
+          {
+            type: 'value',
+            min: 0,
+            max: Math.ceil(barMax * 1.15),
+            axisLabel: { formatter: barAxisLabel(type), fontSize: 11 },
+            splitLine: { lineStyle: { color: '#ebeef5', type: 'dashed' } },
+          },
+          {
+            type: 'value',
+            min: lineMin,
+            max: lineMax,
+            axisLabel: { formatter: v => v.toFixed(0) + '%', fontSize: 11 },
+            splitLine: { show: false },
+          },
+        ],
+        series: [
+          {
+            name: `去年${name}`,
+            type: 'bar',
+            barGap: 0,
+            barMaxWidth: 28,
+            itemStyle: { color: COLORS.lastYear },
+            data: lastYear,
+          },
+          {
+            name: `当年${name}`,
+            type: 'bar',
+            barMaxWidth: 28,
+            itemStyle: { color: COLORS.currentYear },
+            data: currentYear,
+          },
+          {
+            name: `${name}环比上月`,
+            type: 'line',
+            yAxisIndex: 1,
+            symbol: 'circle',
+            symbolSize: 7,
+            lineStyle: { width: 2, color: COLORS.mom },
+            itemStyle: { color: COLORS.mom },
+            data: mom,
+            label: {
+              show: true,
+              position: 'top',
+              fontSize: 10,
+              color: COLORS.mom,
+              formatter: p => (p.value != null ? p.value.toFixed(2) + '%' : ''),
+            },
+          },
+          {
+            name: `${name}同比`,
+            type: 'line',
+            yAxisIndex: 1,
+            symbol: 'circle',
+            symbolSize: 7,
+            lineStyle: { width: 2, color: COLORS.yoy },
+            itemStyle: { color: COLORS.yoy },
+            data: yoy,
+            label: {
+              show: true,
+              position: 'top',
+              fontSize: 10,
+              color: COLORS.yoy,
+              formatter: p => (p.value != null ? p.value.toFixed(2) + '%' : ''),
+            },
+          },
+        ],
+      };
+    }
+
+    function renderTable() {
+      const table = document.getElementById('dataTable');
+      const headers = getHeaders();
+      let html = '<thead>';
+
+      html += '<tr><th class="col-ops" rowspan="2"><input type="checkbox" id="chkAllRows" title="全选"/></th>';
+      html += `<th rowspan="2" class="col-month">月份</th>`;
+      metrics.forEach(m => {
+        html += `<th colspan="4" class="th-metric" title="${m.name}">
+          ${m.name}
+          <button type="button" class="btn-icon btn-del-col" data-metric="${m.name}" title="删除该指标">×</button>
+        </th>`;
+      });
+      html += '</tr><tr>';
+      metrics.forEach(m => {
+        ['去年', '当年', '环比', '同比'].forEach(s => {
+          html += `<th title="${s}${m.name}">${s}</th>`;
+        });
+      });
+      html += '</tr></thead><tbody>';
+
+      tableData.forEach((row, ri) => {
+        const checked = selectedRows.has(ri) ? ' checked' : '';
+        html += '<tr>';
+        html += `<td class="col-ops">
+          <input type="checkbox" class="row-chk" data-r="${ri}"${checked}/>
+          <button type="button" class="btn-icon" data-del-row="${ri}" title="删除本行">×</button>
+        </td>`;
+        const monthVal = row[MONTH_KEY] ?? '';
+        html += `<td class="col-month"><input data-r="${ri}" data-c="${MONTH_KEY}" value="${monthVal}" placeholder="2025-01"/></td>`;
+        metrics.forEach(m => {
+          metricColKeys(m.name).forEach(h => {
+            const val = row[h];
+            const display = val == null ? '' : val;
+            const calc = isCalcColumn(h);
+            const calcAttr = calc ? ' readonly class="cell-calc" data-calc="1"' : '';
+            const title = calc ? ' title="根据去年/当年自动计算"' : '';
+            html += `<td><input data-r="${ri}" data-c="${h}" value="${display}" placeholder="-"${calcAttr}${title}/></td>`;
+          });
+        });
+        html += '</tr>';
+      });
+      html += '</tbody>';
+      table.innerHTML = html;
+
+      document.getElementById('chkAllRows')?.addEventListener('change', e => {
+        const on = e.target.checked;
+        selectedRows = on ? new Set(tableData.map((_, i) => i)) : new Set();
+        table.querySelectorAll('.row-chk').forEach(c => { c.checked = on; });
+      });
+
+      table.querySelectorAll('.row-chk').forEach(chk => {
+        chk.addEventListener('change', e => {
+          const r = +e.target.dataset.r;
+          if (e.target.checked) selectedRows.add(r);
+          else selectedRows.delete(r);
+          const all = table.querySelectorAll('.row-chk');
+          const chkAll = document.getElementById('chkAllRows');
+          if (chkAll) chkAll.checked = all.length && [...all].every(c => c.checked);
+        });
+      });
+
+      table.querySelectorAll('[data-del-row]').forEach(btn => {
+        btn.addEventListener('click', () => deleteRowAt(+btn.dataset.delRow));
+      });
+
+      table.querySelectorAll('.btn-del-col').forEach(btn => {
+        btn.addEventListener('click', () => removeMetric(btn.dataset.metric));
+      });
+
+      table.querySelectorAll('input[data-c]').forEach(inp => {
+        const handler = e => {
+          const r = +e.target.dataset.r;
+          const c = e.target.dataset.c;
+          if (c === MONTH_KEY) {
+            tableData[r][c] = e.target.value.trim();
+            recalcDerivedFields();
+            syncCalcCellsToDom();
+            return;
+          }
+          if (isCalcColumn(c)) return;
+          tableData[r][c] = parseInput(e.target.value);
+          if (c.startsWith('去年') || c.startsWith('当年')) {
+            recalcDerivedFields();
+            syncCalcCellsToDom();
+          }
+        };
+        inp.addEventListener('change', handler);
+        inp.addEventListener('input', e => {
+          const c = e.target.dataset.c;
+          if (c.startsWith('去年') || c.startsWith('当年')) handler(e);
+        });
+      });
+    }
+
+    function readTableFromDom() {
+      document.querySelectorAll('#dataTable input[data-c]').forEach(inp => {
+        const r = +inp.dataset.r;
+        const c = inp.dataset.c;
+        if (!tableData[r]) return;
+        tableData[r][c] = c === MONTH_KEY ? inp.value.trim() : parseInput(inp.value);
+      });
+    }
+
+    function renderCharts() {
+      readTableFromDom();
+      recalcDerivedFields();
+      syncCalcCellsToDom();
+      const validRows = sortRowsByMonth(tableData.filter(r => r[MONTH_KEY]));
+      if (!validRows.length) {
+        setStatus('请至少填写一行月份');
+        return;
+      }
+
+      const filter = document.getElementById('metricFilter').value;
+      const chartMetrics = filter === 'all' ? metrics : metrics.filter(m => m.name === filter);
+
+      disposeAllCharts();
+
+      const grid = document.getElementById('chartsGrid');
+      const empty = document.getElementById('emptyHint');
+      grid.innerHTML = '';
+      grid.style.display = 'grid';
+      empty.style.display = 'none';
+
+      chartMetrics.forEach((metric, idx) => {
+        const card = document.createElement('div');
+        card.className = 'chart-card';
+        card.innerHTML = `
+          <div class="chart-card-head">
+            <span>${metric.name}</span>
+            <button class="btn btn-secondary btn-export-one" data-idx="${idx}">导出 PNG</button>
+          </div>
+          <div class="chart-box" id="chart-${idx}-${Date.now()}"></div>
+        `;
+        grid.appendChild(card);
+        const el = card.querySelector('.chart-box');
+        const chart = echarts.init(el);
+        chart.setOption(buildChartOption(metric, validRows), { notMerge: true });
+        chartInstances.push({ chart, name: metric.name, el });
+        card.querySelector('.btn-export-one').addEventListener('click', () => exportChart(chart, metric.name));
+      });
+
+      resizeHandler = () => {
+        chartInstances.forEach(({ chart, el }) => {
+          if (el?.isConnected) chart.resize();
+        });
+      };
+      window.addEventListener('resize', resizeHandler);
+      requestAnimationFrame(() => chartInstances.forEach(({ chart }) => chart.resize()));
+      setStatus(`已生成 ${chartMetrics.length} 张图表，共 ${validRows.length} 个月份`);
+    }
+
+    function exportChart(chart, name) {
+      const url = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name}.png`;
+      a.click();
+    }
+
+    function setStatus(msg) {
+      document.getElementById('statusText').textContent = msg;
+    }
+
+
+    function excelSerialToMonth(serial) {
+      const utc_days = Math.floor(serial - 25569);
+      const d = new Date(utc_days * 86400 * 1000);
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      return `${y}-${m}`;
+    }
+
+    function parseExcelRows(rows) {
+      if (!rows.length) return [];
+      const header = rows[0].map(c => String(c ?? '').trim());
+      const map = {};
+      header.forEach((h, i) => { if (h) map[h] = i; });
+
+      inferMetricsFromHeaders(Object.keys(map));
+
+      const result = [];
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || r.every(c => c == null || c === '')) continue;
+        let month = r[map['月份']] ?? r[map['month']];
+        if (typeof month === 'number' && month > 40000) month = excelSerialToMonth(month);
+        else month = String(month ?? '').trim();
+        if (!month) continue;
+        const row = { [MONTH_KEY]: month };
+        getHeaders().slice(1).forEach(h => {
+          const idx = map[h];
+          row[h] = idx != null ? parseInput(r[idx]) : null;
+        });
+        Object.keys(map).forEach(h => {
+          if (h === '月份' || h === 'month') return;
+          if (row[h] !== undefined) return;
+          const idx = map[h];
+          row[h] = idx != null ? parseInput(r[idx]) : null;
+        });
+        result.push(normalizeRow(row));
+      }
+      return result;
+    }
+
+    function inferMetricsFromHeaders(headerList) {
+      const found = new Map();
+      headerList.forEach(h => {
+        let m = null;
+        if (h.startsWith('去年')) m = h.slice(2);
+        else if (h.startsWith('当年')) m = h.slice(2);
+        else if (h.endsWith('环比上月')) m = h.slice(0, -4);
+        else if (h.endsWith('同比')) m = h.slice(0, -2);
+        if (m && !found.has(m)) {
+          const def = DEFAULT_METRICS.find(d => d.name === m);
+          found.set(m, def ? { ...def } : { name: m, type: 'count' });
+        }
+      });
+      if (found.size) metrics = [...found.values()];
+    }
+
+    const SAMPLE_DATA_URL = 'data/sample-data.json';
+
+    async function loadSampleData() {
+      metrics = DEFAULT_METRICS.map(m => ({ ...m }));
+      try {
+        const res = await fetch(SAMPLE_DATA_URL);
+        if (!res.ok) throw new Error('fetch failed');
+        tableData = (await res.json()).map(normalizeRow);
+      } catch {
+        setStatus('无法加载示例数据（请通过 GitHub Pages 或本地服务器打开）');
+        return;
+      }
+      selectedRows.clear();
+      recalcDerivedFields();
+      refreshMetricSelects();
+      renderTable();
+      setStatus(`已加载示例数据 ${tableData.length} 行`);
+    }
+
+    document.getElementById('excelFile').addEventListener('change', async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+      tableData = parseExcelRows(rows);
+      if (!tableData.length) {
+        setStatus('Excel 解析失败，请检查表头是否与模板一致');
+        return;
+      }
+      selectedRows.clear();
+      recalcDerivedFields();
+      refreshMetricSelects();
+      renderTable();
+      setStatus(`已导入 ${tableData.length} 行`);
+      e.target.value = '';
+    });
+
+    document.getElementById('btnLoadSample').addEventListener('click', loadSampleData);
+    document.getElementById('btnAddRow').addEventListener('click', addRow);
+    document.getElementById('btnDelRows').addEventListener('click', deleteSelectedRows);
+    document.getElementById('btnAddMetric').addEventListener('click', addMetric);
+    document.getElementById('btnDelMetric').addEventListener('click', () => {
+      removeMetric(document.getElementById('delMetricSelect').value);
+    });
+    document.getElementById('btnGenerate').addEventListener('click', renderCharts);
+    document.getElementById('btnExportAll').addEventListener('click', () => {
+      if (!chartInstances.length) { setStatus('请先生成图表'); return; }
+      chartInstances.forEach(({ chart, name }) => exportChart(chart, name));
+      setStatus('已全部触发下载');
+    });
+
+    refreshMetricSelects();
+    tableData = [emptyRow('2025-01')];
+    renderTable();
+    loadSampleData();
+  </script>
+</body>
+</html>
