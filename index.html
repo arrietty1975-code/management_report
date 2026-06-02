@@ -11,8 +11,8 @@
     :root {
       --bg: #f0f2f5;
       --card: #fff;
-      --primary: #1a4a8c;
-      --accent: #03a9f4;
+      --primary: #5E81AC;
+      --accent: #5E81AC;
       --border: #e4e7ed;
       --text: #303133;
       --muted: #909399;
@@ -25,7 +25,7 @@
       line-height: 1.5;
     }
     header {
-      background: linear-gradient(135deg, #1a4a8c 0%, #2d6cb5 100%);
+      background: linear-gradient(135deg, #5E81AC 0%, #88B4D0 100%);
       color: #fff;
       padding: 20px 28px;
       box-shadow: 0 2px 8px rgba(26, 74, 140, 0.25);
@@ -252,7 +252,7 @@
     }
     table.data-table input.cell-selected {
       background: #d4e8fc !important;
-      border-color: #1a4a8c;
+      border-color: #5E81AC;
     }
     table.data-table input.cell-selected.cell-calc {
       background: #d4ecd4 !important;
@@ -338,10 +338,10 @@
     ];
 
     const COLORS = {
-      lastYear: '#1a4a8c',
-      currentYear: '#4fc3f7',
-      mom: '#26a69a',
-      yoy: '#ff9800',
+      lastYear: '#1A3E7A',
+      currentYear: '#5BC8F4',
+      mom: '#26A69A',
+      yoy: '#FFA726',
     };
 
     const MONTH_KEY = 'month';
@@ -379,7 +379,33 @@
 
     function isLikelyHeaderRow(cells) {
       const s = cells.join('');
-      return /月份|month|去年|当年|环比|同比/i.test(s);
+      return /月份|month|去年|当年|2025年|2026年|环比|同比/i.test(s);
+    }
+
+    /** 数仓导出表头 → 工具内部列名（去年/当年/环比上月/同比） */
+    function normalizeImportHeader(raw) {
+      if (raw == null || raw === '') return '';
+      const h = String(raw).trim();
+      if (h === '月份' || /^month$/i.test(h)) return '月份';
+      if (h.startsWith('去年') || h.startsWith('当年')) return h;
+      if (h.endsWith('环比上月')) return h;
+      if (h.endsWith('同比') && !/^202\d年/.test(h)) return h;
+
+      let m = h.match(/^2025年(.+)$/);
+      if (m) return `去年${m[1]}`;
+
+      if (/^2026年上月/.test(h)) return '';
+
+      m = h.match(/^2026年(.+)环比$/);
+      if (m) return `${m[1]}环比上月`;
+
+      m = h.match(/^2026年(.+)同比$/);
+      if (m) return `${m[1]}同比`;
+
+      m = h.match(/^2026年(.+)$/);
+      if (m) return `当年${m[1]}`;
+
+      return h;
     }
 
     function setCellFromPaste(row, key, raw) {
@@ -388,10 +414,7 @@
         return;
       }
       if (key === MONTH_KEY) {
-        let v = String(raw).trim();
-        const n = Number(v);
-        if (Number.isFinite(n) && n > 40000) v = excelSerialToMonth(n);
-        row[key] = v;
+        row[key] = monthKeyFromCell(raw);
         return;
       }
       row[key] = parseInput(raw);
@@ -1016,8 +1039,8 @@
       const height = Math.min(520, Math.max(360, 320 + n * 10));
       const barMaxWidth = Math.min(36, Math.max(10, Math.floor(520 / n / 2.4)));
       const rotate = n > 10 ? 40 : n > 6 ? 25 : 0;
-      const gridBottom = rotate > 0 ? (rotate >= 40 ? 72 : 58) : 44;
-      const gridLeft = 64;
+      const gridBottom = rotate > 0 ? (rotate >= 40 ? 64 : 52) : 36;
+      const gridLeft = 8;
       return { height, barMaxWidth, rotate, gridBottom, gridLeft, barCategoryGap: n > 14 ? '12%' : '18%' };
     }
 
@@ -1045,14 +1068,37 @@
       const lineMax = Math.min(5000, Math.max(lineBound, 50));
       const lineMin = -lineMax;
 
+      const labelFs = 10;
+      const labelStep = 2;
+
+      function shouldShowLineLabelAt(index) {
+        if (monthCount <= 0 || index < 0) return false;
+        if (index === monthCount - 1) return true;
+        return index % labelStep === 0;
+      }
+
+      function lineLabel(lineColor, isMom) {
+        return {
+          show: true,
+          fontSize: labelFs,
+          color: lineColor,
+          fontWeight: 700,
+          position: isMom ? 'top' : 'bottom',
+          distance: 6,
+          textBorderColor: '#fff',
+          textBorderWidth: 2,
+          formatter: p => {
+            if (p.value == null) return '';
+            if (!shouldShowLineLabelAt(p.dataIndex)) return '';
+            return Number(p.value).toFixed(1) + '%';
+          },
+        };
+      }
+
       return {
-        backgroundColor: '#fff',
-        title: {
-          text: name,
-          left: 'center',
-          top: 8,
-          textStyle: { fontSize: 16, fontWeight: 600, color: '#303133' },
-        },
+        backgroundColor: '#FFFFFF',
+        title: { show: false },
+        labelLayout: { hideOverlap: true, moveOverlap: 'shiftY' },
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
@@ -1072,15 +1118,15 @@
         },
         legend: {
           data: [`去年${name}`, `当年${name}`, `${name}环比上月`, `${name}同比`],
-          top: 36,
+          top: 8,
           left: 'center',
           itemGap: 16,
-          textStyle: { fontSize: 11 },
+          textStyle: { fontSize: 11, color: '#5C6B7A' },
         },
         grid: {
           left: layout.gridLeft,
-          right: 72,
-          top: 82,
+          right: 8,
+          top: 32,
           bottom: layout.gridBottom,
           containLabel: true,
         },
@@ -1089,11 +1135,11 @@
           data: months,
           axisLabel: {
             fontSize: 11,
-            color: '#606266',
+            color: '#6B7785',
             rotate: layout.rotate,
             interval: monthCount > 18 ? 1 : 0,
           },
-          axisLine: { lineStyle: { color: '#dcdfe6' } },
+          axisLine: { lineStyle: { color: '#E2E6EB' } },
         },
         yAxis: [
           {
@@ -1120,50 +1166,42 @@
             barGap: 0,
             barMaxWidth: layout.barMaxWidth,
             barCategoryGap: layout.barCategoryGap,
-            itemStyle: { color: COLORS.lastYear },
+            itemStyle: { color: COLORS.lastYear, borderRadius: [4, 4, 0, 0] },
             data: lastYear,
+            label: { show: false },
           },
           {
             name: `当年${name}`,
             type: 'bar',
             barMaxWidth: layout.barMaxWidth,
             barCategoryGap: layout.barCategoryGap,
-            itemStyle: { color: COLORS.currentYear },
+            itemStyle: { color: COLORS.currentYear, borderRadius: [4, 4, 0, 0] },
             data: currentYear,
+            label: { show: false },
           },
           {
             name: `${name}环比上月`,
             type: 'line',
             yAxisIndex: 1,
+            smooth: true,
             symbol: 'circle',
             symbolSize: 7,
             lineStyle: { width: 2, color: COLORS.mom },
             itemStyle: { color: COLORS.mom },
             data: mom,
-            label: {
-              show: true,
-              position: 'top',
-              fontSize: 10,
-              color: COLORS.mom,
-              formatter: p => (p.value != null ? p.value.toFixed(2) + '%' : ''),
-            },
+            label: lineLabel(COLORS.mom, true),
           },
           {
             name: `${name}同比`,
             type: 'line',
             yAxisIndex: 1,
+            smooth: true,
             symbol: 'circle',
             symbolSize: 7,
             lineStyle: { width: 2, color: COLORS.yoy },
             itemStyle: { color: COLORS.yoy },
             data: yoy,
-            label: {
-              show: true,
-              position: 'top',
-              fontSize: 10,
-              color: COLORS.yoy,
-              formatter: p => (p.value != null ? p.value.toFixed(2) + '%' : ''),
-            },
+            label: lineLabel(COLORS.yoy, false),
           },
         ],
       };
@@ -1341,8 +1379,55 @@
       setStatus(`已生成 ${chartMetrics.length} 张图表，共 ${validRows.length} 个月份`);
     }
 
-    function exportChart(chart, name) {
-      const url = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    function cropPngDataUrl(dataUrl, padding) {
+      const pad = padding == null ? 8 : padding;
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = function () {
+          const w = img.width;
+          const h = img.height;
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const pixels = ctx.getImageData(0, 0, w, h).data;
+          let minX = w, minY = h, maxX = 0, maxY = 0;
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const i = (y * w + x) * 4;
+              if (pixels[i + 3] < 10) continue;
+              if (pixels[i] > 252 && pixels[i + 1] > 252 && pixels[i + 2] > 252) continue;
+              if (x < minX) minX = x;
+              if (y < minY) minY = y;
+              if (x > maxX) maxX = x;
+              if (y > maxY) maxY = y;
+            }
+          }
+          if (minX >= maxX || minY >= maxY) {
+            resolve(dataUrl);
+            return;
+          }
+          minX = Math.max(0, minX - pad);
+          minY = Math.max(0, minY - pad);
+          maxX = Math.min(w - 1, maxX + pad);
+          maxY = Math.min(h - 1, maxY + pad);
+          const cw = maxX - minX + 1;
+          const ch = maxY - minY + 1;
+          const out = document.createElement('canvas');
+          out.width = cw;
+          out.height = ch;
+          out.getContext('2d').drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
+          resolve(out.toDataURL('image/png'));
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+    }
+
+    async function exportChart(chart, name) {
+      const raw = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#FFFFFF' });
+      const url = await cropPngDataUrl(raw, 8);
       const a = document.createElement('a');
       a.href = url;
       a.download = `${name}.png`;
@@ -1354,38 +1439,55 @@
     }
 
 
+    /** Excel 日期序列 → YYYY-MM（与 Excel 1900 历一致，不受浏览器时区影响） */
     function excelSerialToMonth(serial) {
-      const utc_days = Math.floor(serial - 25569);
-      const d = new Date(utc_days * 86400 * 1000);
+      const n = Math.floor(Number(serial));
+      if (!Number.isFinite(n) || n < 30000) return '';
+      const epoch = Date.UTC(1899, 11, 30);
+      const d = new Date(epoch + n * 86400000);
       const y = d.getUTCFullYear();
       const m = String(d.getUTCMonth() + 1).padStart(2, '0');
       return `${y}-${m}`;
+    }
+
+    function monthKeyFromCell(v) {
+      if (v == null || v === '') return '';
+      if (v instanceof Date) {
+        const y = v.getFullYear();
+        const m = v.getMonth();
+        const d = v.getDate();
+        const serial = Math.round((Date.UTC(y, m, d) - Date.UTC(1899, 11, 30)) / 86400000);
+        return excelSerialToMonth(serial);
+      }
+      const n = Number(v);
+      if (Number.isFinite(n) && n > 30000) return excelSerialToMonth(n);
+      const s = String(v).trim();
+      if (/^\d{4}-\d{2}/.test(s)) return s.slice(0, 7);
+      if (/^\d{5,}(\.\d+)?$/.test(s)) return excelSerialToMonth(Number(s));
+      return s;
     }
 
     function parseExcelRows(rows) {
       if (!rows.length) return [];
       const header = rows[0].map(c => String(c ?? '').trim());
       const map = {};
-      header.forEach((h, i) => { if (h) map[h] = i; });
+      header.forEach((h, i) => {
+        if (!h) return;
+        map[h] = i;
+        const norm = normalizeImportHeader(h);
+        if (norm && norm !== h) map[norm] = i;
+      });
 
-      inferMetricsFromHeaders(Object.keys(map));
+      inferMetricsFromHeaders(header);
 
       const result = [];
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
         if (!r || r.every(c => c == null || c === '')) continue;
-        let month = r[map['月份']] ?? r[map['month']];
-        if (typeof month === 'number' && month > 40000) month = excelSerialToMonth(month);
-        else month = String(month ?? '').trim();
+        const month = monthKeyFromCell(r[map['月份']] ?? r[map['month']]);
         if (!month) continue;
         const row = { [MONTH_KEY]: month };
         getHeaders().slice(1).forEach(h => {
-          const idx = map[h];
-          row[h] = idx != null ? parseInput(r[idx]) : null;
-        });
-        Object.keys(map).forEach(h => {
-          if (h === '月份' || h === 'month') return;
-          if (row[h] !== undefined) return;
           const idx = map[h];
           row[h] = idx != null ? parseInput(r[idx]) : null;
         });
@@ -1396,7 +1498,9 @@
 
     function inferMetricsFromHeaders(headerList) {
       const found = new Map();
-      headerList.forEach(h => {
+      headerList.forEach(raw => {
+        const h = normalizeImportHeader(raw) || raw;
+        if (!h || h === '月份') return;
         let m = null;
         if (h.startsWith('去年')) m = h.slice(2);
         else if (h.startsWith('当年')) m = h.slice(2);
@@ -1414,9 +1518,9 @@
     const SAMPLE_DATA_URL = 'data/sample-data.json';
 
     function parseExcelBuffer(buf) {
-      const wb = XLSX.read(buf, { type: 'array' });
+      const wb = XLSX.read(buf, { type: 'array', cellDates: false });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+      return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
     }
 
     function applyImportedRows(rows, sourceLabel) {
