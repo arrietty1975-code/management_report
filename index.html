@@ -7,402 +7,704 @@
   <title>经管会报告整理工具</title>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.css" />
   <style>
     :root {
-      --bg: #f5f7fa;
-      --card: #fff;
       --primary: #5E81AC;
-      --accent: #5E81AC;
+      --primary-dark: #4d6d96;
+      --primary-light: #88B4D0;
       --success: #67c23a;
       --danger: #f56c6c;
-      --border: #dce4ec;
-      --text: #2c3e50;
-      --muted: #8a92a0;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-      --shadow-md: 0 2px 8px rgba(0,0,0,0.12);
-      --shadow-lg: 0 4px 16px rgba(0,0,0,0.15);
+      --warning: #FFA726;
+      --info: #26A69A;
+      --bg-primary: #f8fafc;
+      --bg-secondary: #eef2f7;
+      --card: #ffffff;
+      --text-primary: #1a202c;
+      --text-secondary: #4a5568;
+      --text-muted: #718096;
+      --border: #e2e8f0;
+      --border-dark: #cbd5e0;
+      --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+      --shadow-xl: 0 20px 25px rgba(0,0,0,0.1), 0 10px 10px rgba(0,0,0,0.04);
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
+    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       line-height: 1.6;
       font-size: 14px;
+      display: flex;
+      min-height: 100vh;
     }
-    header {
-      background: linear-gradient(135deg, #5E81AC 0%, #88B4D0 100%);
+
+    /* ===== 侧边栏导航 ===== */
+    .sidebar {
+      width: 260px;
+      background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
       color: #fff;
-      padding: 28px 32px;
-      box-shadow: var(--shadow-md);
-      position: relative;
-      overflow: hidden;
+      padding: 24px 16px;
+      box-shadow: var(--shadow-lg);
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 1000;
+      transition: var(--transition);
     }
-    header::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -10%;
-      width: 300px;
-      height: 300px;
+
+    .sidebar-header {
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-subtitle {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-top: 6px;
+      font-weight: 400;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+    }
+
+    .sidebar-menu-item {
+      margin-bottom: 8px;
+    }
+
+    .sidebar-menu-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid transparent;
+    }
+
+    .sidebar-menu-link:hover {
       background: rgba(255,255,255,0.1);
-      border-radius: 50%;
-      pointer-events: none;
+      color: #fff;
+      border-color: rgba(255,255,255,0.2);
     }
-    header h1 { font-size: 28px; font-weight: 700; position: relative; z-index: 1; letter-spacing: -0.5px; }
-    header p { font-size: 14px; opacity: 0.9; margin-top: 8px; position: relative; z-index: 1; font-weight: 400; }
-    .container { max-width: 1440px; margin: 0 auto; padding: 24px 20px; }
+
+    .sidebar-menu-link.active {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(94, 129, 172, 0.4);
+    }
+
+    .sidebar-menu-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ===== 主内容区域 ===== */
+    .main-content {
+      flex: 1;
+      margin-left: 260px;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-primary);
+    }
+
+    .top-bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      box-shadow: var(--shadow-xs);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .top-bar-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .top-bar-status {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 6px 12px;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+    }
+
+    .page-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+    }
+
+    /* ===== 内容卡片 ===== */
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+      margin-bottom: 24px;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--border-dark);
+    }
+
+    .card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, rgba(94, 129, 172, 0.02) 0%, rgba(136, 180, 208, 0.02) 100%);
+      border-radius: 16px 16px 0 0;
+    }
+
+    .card-header-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-header-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-top: 4px;
+    }
+
+    .card-body {
+      padding: 24px;
+    }
+
+    /* ===== 工具栏 ===== */
     .toolbar {
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
       align-items: center;
-      background: var(--card);
-      border-radius: 10px;
-      padding: 16px 20px;
-      margin-bottom: 20px;
-      box-shadow: var(--shadow-sm);
-      border: 1px solid var(--border);
+      margin-bottom: 16px;
     }
-    .toolbar label { font-size: 13px; color: var(--muted); margin-right: 6px; font-weight: 500; }
+
+    .toolbar-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 0 12px;
+      border-right: 1px solid var(--border);
+    }
+
+    .toolbar-group:last-child {
+      border-right: none;
+    }
+
+    .toolbar-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ===== 按钮样式 ===== */
     .btn {
-      border: none;
-      border-radius: 8px;
-      padding: 9px 18px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      white-space: nowrap;
-    }
-    .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-    .btn:active { transform: translateY(0); }
-    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 4px rgba(94, 129, 172, 0.3); }
-    .btn-primary:hover { background: #4d6d96; }
-    .btn-secondary { background: #f0f3f8; color: var(--text); border: 1px solid var(--border); }
-    .btn-secondary:hover { background: #e6ecf5; border-color: var(--primary); }
-    .btn-accent { background: var(--accent); color: #fff; box-shadow: 0 2px 4px rgba(94, 129, 172, 0.3); }
-    .btn-accent:hover { background: #4d6d96; }
-    input[type="file"] { display: none; }
-    .file-label {
-      display: inline-block;
-      padding: 9px 18px;
-      background: #f0f3f8;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .file-label:hover { background: #e6ecf5; border-color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-    select {
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 13px;
-      background: var(--card);
-      color: var(--text);
-      cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    select:hover { border-color: var(--primary); }
-    select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(94, 129, 172, 0.1); }
-    .panel {
-      background: var(--card);
+      gap: 8px;
+      padding: 10px 18px;
+      border: none;
       border-radius: 10px;
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 20px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      transition: box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .panel:hover { box-shadow: var(--shadow-md); }
-    .panel-head {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
+      font-size: 13px;
       font-weight: 600;
-      font-size: 15px;
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(94, 129, 172, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+      box-shadow: 0 6px 16px rgba(94, 129, 172, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-primary);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-success {
+      background: rgba(103, 194, 58, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(103, 194, 58, 0.3);
+    }
+
+    .btn-success:hover {
+      background: rgba(103, 194, 58, 0.15);
+      border-color: var(--success);
+    }
+
+    .btn-danger {
+      background: rgba(245, 108, 108, 0.1);
+      color: var(--danger);
+      border: 1px solid rgba(245, 108, 108, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(245, 108, 108, 0.15);
+      border-color: var(--danger);
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border-radius: 8px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      background: linear-gradient(to right, rgba(94, 129, 172, 0.02), transparent);
+      justify-content: center;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid transparent;
     }
-    .table-wrap {
+
+    .btn-icon:hover {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+
+    /* ===== 表格样式 ===== */
+    .table-wrapper {
       overflow: auto;
-      max-height: 480px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
     }
+
     table.data-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
       min-width: 1200px;
     }
+
     table.data-table th,
     table.data-table td {
       border: 1px solid var(--border);
-      padding: 8px 10px;
+      padding: 12px 14px;
       text-align: right;
       white-space: nowrap;
-      transition: background-color 0.2s ease;
     }
-    table.data-table tbody tr:hover {
-      background-color: rgba(94, 129, 172, 0.03);
-    }
+
     table.data-table th {
-      background: linear-gradient(to bottom, #fafbfc, #f5f7fa);
+      background: linear-gradient(135deg, #f7fafc 0%, #eef2f7 100%);
       position: sticky;
       top: 0;
-      z-index: 1;
+      z-index: 10;
       font-weight: 600;
-      color: var(--text);
+      color: var(--text-primary);
     }
-    table.data-table th.col-month,
-    table.data-table td.col-month {
-      text-align: center;
-      position: sticky;
-      left: 36px;
-      background: #fff;
-      z-index: 2;
-      box-shadow: 2px 0 6px rgba(0,0,0,0.08);
-      font-weight: 500;
+
+    table.data-table tbody tr {
+      transition: background-color 0.2s ease;
     }
-    table.data-table th.col-month { background: linear-gradient(to bottom, #fafbfc, #f5f7fa); z-index: 3; }
-    table.data-table th.col-ops,
-    table.data-table td.col-ops {
-      position: sticky;
-      left: 0;
-      z-index: 4;
-      box-shadow: 2px 0 6px rgba(0,0,0,0.08);
-      background: #fafbfc;
+
+    table.data-table tbody tr:hover {
+      background: rgba(94, 129, 172, 0.05);
     }
+
+    table.data-table tbody tr:nth-child(even) {
+      background: rgba(0, 0, 0, 0.01);
+    }
+
     table.data-table input {
-      width: 72px;
+      width: 80px;
       border: 1px solid transparent;
-      padding: 4px 6px;
+      padding: 6px 8px;
       font-size: 13px;
       text-align: right;
       background: transparent;
-      border-radius: 4px;
-      transition: all 0.2s ease;
+      border-radius: 6px;
+      transition: var(--transition);
     }
+
     table.data-table input:hover {
       background: rgba(94, 129, 172, 0.05);
     }
+
     table.data-table input:focus {
-      border-color: var(--accent);
       outline: none;
-      background: #f0f9ff;
-      box-shadow: 0 0 0 2px rgba(94, 129, 172, 0.1);
+      border-color: var(--primary);
+      background: rgba(94, 129, 172, 0.08);
+      box-shadow: 0 0 0 3px rgba(94, 129, 172, 0.1);
     }
-    table.data-table .col-month input { width: 84px; text-align: center; }
+
     table.data-table input.cell-calc {
-      background: linear-gradient(to right, rgba(103, 194, 58, 0.08), rgba(103, 194, 58, 0.04));
+      background: linear-gradient(135deg, rgba(103, 194, 58, 0.08) 0%, rgba(103, 194, 58, 0.04) 100%);
       color: #4a7c3a;
+      font-weight: 500;
       cursor: default;
+    }
+
+    table.data-table input.cell-calc:focus {
+      background: linear-gradient(135deg, rgba(103, 194, 58, 0.12) 0%, rgba(103, 194, 58, 0.06) 100%);
+      border-color: var(--success);
+    }
+
+    table.data-table input.cell-selected {
+      background: rgba(94, 129, 172, 0.15) !important;
+      border-color: var(--primary) !important;
       font-weight: 500;
     }
-    table.data-table input.cell-calc:focus {
-      border-color: transparent;
-      background: linear-gradient(to right, rgba(103, 194, 58, 0.08), rgba(103, 194, 58, 0.04));
-    }
-    table.data-table .col-ops {
-      width: 36px;
-      text-align: center;
-      padding: 4px;
-      background: #fafbfc;
-    }
-    table.data-table th.col-ops { background: linear-gradient(to bottom, #fafbfc, #f5f7fa); z-index: 4; }
-    table.data-table .col-ops input[type="checkbox"] { cursor: pointer; }
-    .btn-icon {
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1;
-      padding: 4px 6px;
-      border-radius: 6px;
-      color: var(--muted);
-      transition: all 0.2s ease;
-    }
-    .btn-icon:hover { background: rgba(245, 108, 108, 0.1); color: var(--danger); }
-    .btn-icon-add:hover { background: rgba(103, 194, 58, 0.1); color: var(--success); }
-    th.th-metric { position: relative; }
-    th.th-metric .btn-del-col {
-      position: absolute;
-      right: 2px;
-      top: 2px;
-      font-size: 11px;
-      padding: 0 4px;
-      line-height: 16px;
-    }
-    .table-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-    }
-    .table-actions .sep {
-      width: 1px;
-      height: 24px;
-      background: var(--border);
-      margin: 0 4px;
-    }
-    .btn-danger { background: #fef0f0; color: var(--danger); border: 1px solid rgba(245, 108, 108, 0.2); }
-    .btn-danger:hover { background: #fde2e2; border-color: var(--danger); }
+
+    /* ===== 图表网格 ===== */
     .charts-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 24px;
+      margin-top: 24px;
     }
-    @media (max-width: 1200px) {
+
+    @media (max-width: 1400px) {
       .charts-grid { grid-template-columns: 1fr; }
     }
-    @media (max-width: 960px) {
-      .charts-grid { grid-template-columns: 1fr; }
-    }
+
     .chart-card {
       background: var(--card);
-      border-radius: 10px;
-      box-shadow: var(--shadow-sm);
+      border-radius: 16px;
       border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: var(--transition);
     }
+
     .chart-card:hover {
-      box-shadow: var(--shadow-md);
-      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-4px);
+      border-color: var(--border-dark);
     }
-    .chart-card-head {
-      padding: 14px 18px;
+
+    .chart-card-header {
+      padding: 16px 20px;
       border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: linear-gradient(135deg, rgba(94, 129, 172, 0.02) 0%, rgba(136, 180, 208, 0.02) 100%);
+    }
+
+    .chart-card-title {
       font-size: 14px;
       font-weight: 600;
-      flex-shrink: 0;
-      background: linear-gradient(to right, rgba(94, 129, 172, 0.02), transparent);
+      color: var(--text-primary);
     }
-    .chart-card-head .chart-mode-tag {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--muted);
-      margin-left: 10px;
-      background: rgba(94, 129, 172, 0.08);
-      padding: 2px 8px;
-      border-radius: 4px;
+
+    .chart-card-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
+
     .chart-box {
       width: 100%;
-      min-height: 360px;
+      min-height: 380px;
       flex: 1;
       padding: 16px;
     }
-    .empty-hint {
+
+    .empty-state {
       text-align: center;
-      padding: 60px 40px;
-      color: var(--muted);
+      padding: 80px 40px;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state-text {
       font-size: 15px;
-      background: linear-gradient(135deg, rgba(94, 129, 172, 0.02), rgba(136, 180, 208, 0.02));
-      border-radius: 10px;
-      border: 1px dashed var(--border);
-    }
-    .status { font-size: 12px; color: var(--muted); margin-left: auto; font-weight: 500; }
-    .paste-hint {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 400;
-      margin-left: 8px;
-      padding: 4px 8px;
-      background: rgba(94, 129, 172, 0.05);
-      border-radius: 6px;
-    }
-    table.data-table input.cell-focus {
-      border-color: var(--accent);
-      background: #e6f7ff;
-      box-shadow: 0 0 0 2px rgba(94, 129, 172, 0.2);
-    }
-    table.data-table input.cell-selected {
-      background: rgba(94, 129, 172, 0.15) !important;
-      border-color: var(--accent);
       font-weight: 500;
     }
-    table.data-table input.cell-selected.cell-calc {
-      background: rgba(103, 194, 58, 0.15) !important;
-    }
-    table.data-table th.th-selectable {
+
+    /* ===== 选择框 ===== */
+    select {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--text-primary);
+      font-size: 13px;
       cursor: pointer;
-      user-select: none;
-      transition: background-color 0.2s ease;
+      transition: var(--transition);
     }
-    table.data-table th.th-selectable:hover {
-      background: linear-gradient(to bottom, rgba(94, 129, 172, 0.1), rgba(94, 129, 172, 0.05));
+
+    select:hover {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(94, 129, 172, 0.1);
     }
-    table.data-table th.th-selected {
-      background: rgba(94, 129, 172, 0.15) !important;
-      color: var(--primary);
-      font-weight: 700;
+
+    select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(94, 129, 172, 0.1);
     }
+
+    /* ===== 文件输入 ===== */
+    input[type="file"] { display: none; }
+
+    /* ===== 响应式设计 ===== */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 220px;
+        padding: 16px 12px;
+      }
+
+      .main-content {
+        margin-left: 220px;
+      }
+
+      .page-content {
+        padding: 20px;
+      }
+
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .top-bar {
+        padding: 12px 20px;
+      }
+
+      .card-body {
+        padding: 16px;
+      }
+
+      table.data-table th,
+      table.data-table td {
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .sidebar {
+        width: 180px;
+        padding: 12px 8px;
+      }
+
+      .main-content {
+        margin-left: 180px;
+      }
+
+      .sidebar-title {
+        font-size: 14px;
+      }
+
+      .sidebar-menu-link {
+        padding: 10px 10px;
+        font-size: 12px;
+      }
+
+      .toolbar-group {
+        border-right: none;
+        padding: 0;
+        width: 100%;
+      }
+
+      .toolbar {
+        flex-direction: column;
+      }
+    }
+
     @media print {
-      header, .toolbar, .panel, .chart-card-head .btn { display: none !important; }
+      .sidebar, .top-bar, .toolbar { display: none !important; }
+      .main-content { margin-left: 0; }
+      .page-content { padding: 0; }
       .charts-grid { grid-template-columns: 1fr; }
-      .chart-box { height: 360px; page-break-inside: avoid; }
+      .chart-box { height: 400px; page-break-inside: avoid; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>经管会报告整理工具</h1>
-    <p>录入各指标分月数据，一键生成双轴柱状+折线图（样式对齐经管会标准图表）</p>
-  </header>
+  <!-- 侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">📊 报告工具</div>
+      <div class="sidebar-subtitle">数据录入与图表生成</div>
+    </div>
+    <ul class="sidebar-menu">
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-link active" onclick="scrollToSection('data-input')">
+          <span class="sidebar-menu-icon">📝</span>
+          <span>数据录入</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-link" onclick="scrollToSection('charts')">
+          <span class="sidebar-menu-icon">📈</span>
+          <span>图表展示</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-link" id="importLink">
+          <span class="sidebar-menu-icon">📥</span>
+          <span>导入 Excel</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-link" id="exportLink">
+          <span class="sidebar-menu-icon">📤</span>
+          <span>导出 PNG</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-link" onclick="window.print()">
+          <span class="sidebar-menu-icon">🖨️</span>
+          <span>打印报告</span>
+        </a>
+      </li>
+    </ul>
+  </aside>
 
-  <div class="container">
-    <div class="toolbar">
-      <label for="excelFile" class="file-label">导入 Excel (.xlsx)</label>
-      <input type="file" id="excelFile" accept=".xlsx,.xls" />
-      <button class="btn btn-secondary" id="btnLoadSample">重新加载模板</button>
-      <button class="btn btn-primary" id="btnGenerate">生成图表</button>
-      <button class="btn btn-accent" id="btnExportAll">导出全部 PNG</button>
-      <button class="btn btn-secondary" onclick="window.print()">打印报告</button>
-      <label style="margin-left:8px">展示指标：</label>
-      <select id="metricFilter">
-        <option value="all">全部 9 项</option>
-      </select>
-      <span class="status" id="statusText">就绪</span>
+  <!-- 主内容 -->
+  <div class="main-content">
+    <!-- 顶部栏 -->
+    <div class="top-bar">
+      <div class="top-bar-title">经管会报告整理工具</div>
+      <div class="top-bar-status" id="statusText">就绪</div>
     </div>
 
-    <section class="panel">
-      <div class="panel-head">
-        <span>数据录入表 <small style="font-weight:400;color:var(--muted)">（填写去年/当年后自动算环比、同比，浅绿列为只读）</small></span>
-        <div class="table-actions">
-          <button class="btn btn-secondary" id="btnAddRow" type="button">+ 增行</button>
-          <button class="btn btn-danger" id="btnDelRows" type="button">− 删选中行</button>
-          <span class="sep"></span>
-          <button class="btn btn-secondary" id="btnAddMetric" type="button">+ 增指标列</button>
-          <select id="delMetricSelect" title="选择要删除的指标"></select>
-          <button class="btn btn-danger" id="btnDelMetric" type="button">− 删指标列</button>
-          <span class="sep"></span>
-          <button class="btn btn-secondary" id="btnCopy" type="button" title="Ctrl+C / ⌘C">复制</button>
-          <button class="btn btn-secondary" id="btnPaste" type="button" title="Ctrl+V / ⌘V">粘贴</button>
-          <span class="paste-hint">拖选 / 点击表头选列或指标；Delete 清空数据，整列选指标可删列</span>
+    <!-- 页面内容 -->
+    <div class="page-content">
+      <!-- 数据录入卡片 -->
+      <div class="card" id="data-input">
+        <div class="card-header">
+          <div>
+            <div class="card-header-title">📋 数据录入表</div>
+            <div class="card-header-subtitle">填写去年/当年后自动计算环比、同比；浅绿色列为只读</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="toolbar">
+            <div class="toolbar-group">
+              <span class="toolbar-label">行操作</span>
+              <button class="btn btn-secondary btn-sm" id="btnAddRow">➕ 增行</button>
+              <button class="btn btn-danger btn-sm" id="btnDelRows">➖ 删行</button>
+            </div>
+            <div class="toolbar-group">
+              <span class="toolbar-label">指标</span>
+              <button class="btn btn-secondary btn-sm" id="btnAddMetric">➕ 增指标</button>
+              <select id="delMetricSelect" title="选择要删除的指标"></select>
+              <button class="btn btn-danger btn-sm" id="btnDelMetric">➖ 删指标</button>
+            </div>
+            <div class="toolbar-group">
+              <span class="toolbar-label">编辑</span>
+              <button class="btn btn-secondary btn-sm" id="btnCopy">📋 复制</button>
+              <button class="btn btn-secondary btn-sm" id="btnPaste">📌 粘贴</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table" id="dataTable"></table>
+          </div>
         </div>
       </div>
-      <div class="table-wrap" id="tableWrap" tabindex="0">
-        <table class="data-table" id="dataTable"></table>
-      </div>
-    </section>
 
-    <section id="chartsSection">
-      <div class="empty-hint" id="emptyHint">录入数据后点击「生成图表」</div>
-      <div class="charts-grid" id="chartsGrid" style="display:none"></div>
-    </section>
+      <!-- 图表展示卡片 -->
+      <div class="card" id="charts">
+        <div class="card-header">
+          <div>
+            <div class="card-header-title">📊 图表展示</div>
+            <div class="card-header-subtitle">双轴柱状+折线图，样式对齐经管会标准</div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">展示指标：</label>
+            <select id="metricFilter" style="min-width: 150px;">
+              <option value="all">全部 9 项</option>
+            </select>
+            <button class="btn btn-primary btn-sm" id="btnGenerate">🎨 生成图表</button>
+            <button class="btn btn-success btn-sm" id="btnExportAll">💾 导出全部</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="empty-state" id="emptyHint">
+            <div class="empty-state-icon">📊</div>
+            <div class="empty-state-text">录入数据后点击「生成图表」预览效果</div>
+          </div>
+          <div class="charts-grid" id="chartsGrid" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- 模板加载 -->
+      <div style="text-align: center; margin-top: 32px; padding: 24px; background: rgba(94, 129, 172, 0.05); border-radius: 12px; border: 1px dashed var(--border);">
+        <button class="btn btn-secondary" id="btnLoadSample" style="margin-right: 12px;">📥 加载示例数据</button>
+        <label for="excelFile" class="btn btn-primary">📤 导入 Excel 文件</label>
+        <input type="file" id="excelFile" accept=".xlsx,.xls" />
+      </div>
+    </div>
   </div>
 
   <script>
@@ -436,6 +738,13 @@
     let selectionEnd = null;
     let isDraggingSelect = false;
 
+    function scrollToSection(sectionId) {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
     function getDataColumnKeys() {
       return [MONTH_KEY, ...metrics.flatMap(m => metricColKeys(m.name))];
     }
@@ -463,7 +772,6 @@
       return /月份|month|去年|当年|2025年|2026年|环比|同比/i.test(s);
     }
 
-    /** 数仓导出表头 → 工具内部列名（去年/当年/环比上月/同比） */
     function normalizeImportHeader(raw) {
       if (raw == null || raw === '') return '';
       const h = String(raw).trim();
@@ -544,1037 +852,189 @@
           inp.classList.add('cell-selected');
         }
       });
-      document.querySelectorAll('#dataTable th.th-selectable').forEach(th => {
-        th.classList.remove('th-selected');
-        const c1 = th.dataset.c1 != null ? +th.dataset.c1 : (th.dataset.col != null ? +th.dataset.col : null);
-        const c2 = th.dataset.c2 != null ? +th.dataset.c2 : c1;
-        if (c1 == null) return;
-        if (c1 >= range.c1 && c2 <= range.c2) th.classList.add('th-selected');
-      });
     }
 
-    function isFullRowSpan(range) {
-      return tableData.length > 0 && range.r1 === 0 && range.r2 >= tableData.length - 1;
-    }
-
-    function getFullySelectedMetrics(range) {
-      if (!isFullRowSpan(range)) return [];
-      const cols = getDataColumnKeys();
-      const inRange = [];
-      metrics.forEach(m => {
-        const keys = metricColKeys(m.name);
-        const idxs = keys.map(k => cols.indexOf(k));
-        if (idxs.every(i => i >= range.c1 && i <= range.c2)) {
-          inRange.push({ name: m.name, c1: idxs[0], c2: idxs[idxs.length - 1] });
-        }
-      });
-      if (!inRange.length) return [];
-      inRange.sort((a, b) => a.c1 - b.c1);
-      if (inRange[0].c1 !== range.c1 || inRange[inRange.length - 1].c2 !== range.c2) return [];
-      for (let i = 1; i < inRange.length; i++) {
-        if (inRange[i].c1 !== inRange[i - 1].c2 + 1) return [];
-      }
-      return inRange.map(m => m.name);
-    }
-
-    function selectColumnRange(c1, c2, extend) {
-      const lastR = Math.max(0, tableData.length - 1);
-      if (extend && selectionAnchor) {
-        const anchor = normalizeRange(selectionAnchor, selectionEnd || selectionAnchor);
-        selectionAnchor = { r: 0, c: Math.min(anchor.c1, c1) };
-        selectionEnd = { r: lastR, c: Math.max(anchor.c2, c2) };
-      } else {
-        selectionAnchor = { r: 0, c: c1 };
-        selectionEnd = { r: lastR, c: c2 };
-      }
-      applySelectionHighlight();
-    }
-
-    function selectColumnByHeader(colIndex, extend) {
-      selectColumnRange(colIndex, colIndex, extend);
-    }
-
-    function selectMetricByHeader(metricName, extend) {
-      const keys = metricColKeys(metricName);
-      const c1 = colKeyToIndex(keys[0]);
-      const c2 = colKeyToIndex(keys[keys.length - 1]);
-      selectColumnRange(c1, c2, extend);
-    }
-
-    function clearSelectionRange(range) {
-      const cols = getDataColumnKeys();
-      let needRecalc = false;
-      for (let ri = range.r1; ri <= range.r2; ri++) {
-        if (!tableData[ri]) continue;
-        for (let ci = range.c1; ci <= range.c2; ci++) {
-          const key = cols[ci];
-          if (key === MONTH_KEY) tableData[ri][key] = '';
-          else {
-            tableData[ri][key] = null;
-            if (key.startsWith('去年') || key.startsWith('当年')) needRecalc = true;
-          }
-        }
-      }
-      if (needRecalc) recalcDerivedFields();
-    }
-
-    function handleDeleteSelection() {
-      const active = document.activeElement;
-      if (active?.matches('#dataTable input[data-c]') && hasInputTextSelection(active)) {
-        return;
-      }
-
-      readTableFromDom();
-      const range = getSelectionRange();
-      const cols = getDataColumnKeys();
-      const fullMetrics = getFullySelectedMetrics(range);
-
-      if (fullMetrics.length) {
-        if (metrics.length - fullMetrics.length < 1) {
-          alert('至少保留 1 个指标列');
-          return;
-        }
-        const label = fullMetrics.length === 1 ? `「${fullMetrics[0]}」` : `${fullMetrics.length} 个指标`;
-        if (!confirm(`确定删除 ${label} 及其全部 4 列数据？`)) return;
-        fullMetrics.slice().sort((a, b) => {
-          return metrics.findIndex(m => m.name === b) - metrics.findIndex(m => m.name === a);
-        }).forEach(name => removeMetric(name, { skipConfirm: true, silent: true }));
-        setStatus(`已删除 ${fullMetrics.length} 个指标列`);
-        return;
-      }
-
-      clearSelectionRange(range);
-      renderTable();
-      const rows = range.r2 - range.r1 + 1;
-      const colsN = range.c2 - range.c1 + 1;
-      const colNames = [];
-      for (let ci = range.c1; ci <= range.c2; ci++) {
-        const k = cols[ci];
-        if (k === MONTH_KEY) colNames.push('月份');
-        else colNames.push(k.length > 8 ? k.slice(0, 8) + '…' : k);
-      }
-      const colHint = colsN <= 3 ? colNames.join('、') : `${colsN} 列`;
-      setStatus(`已清空选区 ${rows} 行 × ${colHint}`);
-    }
-
-    function setSelectionFromInput(inp, extend) {
-      const cell = { r: +inp.dataset.r, c: +inp.dataset.col };
-      if (extend && selectionAnchor) {
-        selectionEnd = cell;
-      } else {
-        selectionAnchor = cell;
-        selectionEnd = { ...cell };
-      }
-      applySelectionHighlight();
-    }
-
-    async function writeClipboard(text) {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        ta.remove();
-      }
-    }
-
-    function buildCopyPayload() {
-      readTableFromDom();
-      const cols = getDataColumnKeys();
-      const range = getSelectionRange();
-      const multiCell = isRangeMultiCell(range);
-
-      let lines = [];
-      let statusMsg = '';
-
-      if (multiCell || !selectedRows.size) {
-        for (let ri = range.r1; ri <= range.r2; ri++) {
-          const cells = [];
-          for (let ci = range.c1; ci <= range.c2; ci++) {
-            cells.push(formatCellForCopy(tableData[ri]?.[cols[ci]], cols[ci]));
-          }
-          lines.push(cells.join('\t'));
-        }
-        const rows = range.r2 - range.r1 + 1;
-        const colsN = range.c2 - range.c1 + 1;
-        statusMsg = rows === 1 && colsN === 1
-          ? '已复制当前单元格'
-          : `已复制选区 ${rows} 行 × ${colsN} 列`;
-      } else {
-        lines.push(cols.join('\t'));
-        [...selectedRows].sort((a, b) => a - b).forEach(ri => {
-          if (!tableData[ri]) return;
-          lines.push(cols.map(k => formatCellForCopy(tableData[ri][k], k)).join('\t'));
-        });
-        statusMsg = `已复制勾选 ${selectedRows.size} 行（含表头）`;
-      }
-
-      return { tsv: lines.join('\n'), statusMsg };
-    }
-
-    /** @returns {boolean} true = 已处理；false = 交给浏览器复制单元格内选中文本 */
-    async function copyFromTable() {
-      const active = document.activeElement;
-      if (active?.matches('#dataTable input[data-c]') && hasInputTextSelection(active)) {
-        return false;
-      }
-
-      const { tsv, statusMsg } = buildCopyPayload();
-      await writeClipboard(tsv);
-      setStatus(statusMsg);
-      return true;
-    }
-
-    function handleCopyEvent(e) {
-      const inp = e.target;
-      if (!inp?.matches('#dataTable input[data-c]')) return;
-      if (hasInputTextSelection(inp)) return;
-
-      const { tsv, statusMsg } = buildCopyPayload();
-      e.preventDefault();
-      e.clipboardData.setData('text/plain', tsv);
-      setStatus(statusMsg);
-    }
-
-    async function pasteToTable(clipboardText) {
-      readTableFromDom();
-      let text = clipboardText;
-      if (text == null) {
-        try {
-          text = await navigator.clipboard.readText();
-        } catch {
-          setStatus('无法读取剪贴板，请允许权限或在单元格内 Ctrl+V');
-          return;
-        }
-      }
-      const grid = parseClipboardGrid(text);
-      if (!grid.length) {
-        setStatus('剪贴板无有效表格数据');
-        return;
-      }
-
-      let dataGrid = grid;
-      if (isLikelyHeaderRow(grid[0])) dataGrid = grid.slice(1);
-      if (!dataGrid.length) return;
-
-      const cols = getDataColumnKeys();
-      const startRow = focusCell.r;
-      const startCol = focusCell.c;
-      const needRows = startRow + dataGrid.length;
-      while (tableData.length < needRows) {
-        tableData.push(emptyRow(nextMonthAfter(tableData[tableData.length - 1]?.[MONTH_KEY])));
-      }
-
-      dataGrid.forEach((rowCells, dr) => {
-        const ri = startRow + dr;
-        if (!tableData[ri]) tableData[ri] = emptyRow();
-        rowCells.forEach((cell, dc) => {
-          const ci = startCol + dc;
-          if (ci >= cols.length) return;
-          setCellFromPaste(tableData[ri], cols[ci], cell);
-        });
-      });
-
-      recalcDerivedFields();
-      renderTable();
-      const colCount = Math.min(
-        Math.max(...dataGrid.map(r => r.length)),
-        cols.length - startCol
-      );
-      setStatus(`已粘贴 ${dataGrid.length} 行 × ${colCount} 列（自第 ${startRow + 1} 行起）`);
-    }
-
-    function updateFocusCell(inp) {
-      document.querySelectorAll('#dataTable input.cell-focus').forEach(el => el.classList.remove('cell-focus'));
-      inp.classList.add('cell-focus');
-      focusCell = { r: +inp.dataset.r, c: +inp.dataset.col };
-    }
-
-    function bindTableClipboard() {
-      const wrap = document.getElementById('tableWrap');
-
-      document.querySelectorAll('#dataTable input[data-c]').forEach(inp => {
-        inp.addEventListener('focus', () => updateFocusCell(inp));
-
-        inp.addEventListener('mousedown', e => {
-          if (e.button !== 0) return;
-          setSelectionFromInput(inp, e.shiftKey);
-          isDraggingSelect = true;
-        });
-
-        inp.addEventListener('mouseenter', () => {
-          if (!isDraggingSelect) return;
-          selectionEnd = { r: +inp.dataset.r, c: +inp.dataset.col };
-          applySelectionHighlight();
-        });
-
-        inp.addEventListener('paste', e => {
-          e.preventDefault();
-          const text = e.clipboardData?.getData('text/plain');
-          if (text) pasteToTable(text);
-        });
-
-        inp.addEventListener('copy', handleCopyEvent);
-      });
-
-      if (!wrap._mouseupBound) {
-        wrap._mouseupBound = true;
-        document.addEventListener('mouseup', () => { isDraggingSelect = false; });
-      }
-
-      document.querySelectorAll('#dataTable th.th-selectable').forEach(th => {
-        th.addEventListener('mousedown', e => {
-          if (e.button !== 0) return;
-          e.preventDefault();
-          const metric = th.dataset.metric;
-          const col = th.dataset.col != null ? +th.dataset.col : null;
-          if (metric) {
-            selectMetricByHeader(metric, e.shiftKey);
-          } else if (col != null) {
-            selectColumnByHeader(col, e.shiftKey);
-          }
-          wrap.focus();
-        });
-      });
-
-      wrap.onkeydown = async e => {
-        const active = document.activeElement;
-        const inTable = active?.closest('#dataTable') || active === wrap;
-
-        if ((e.key === 'Delete' || e.key === 'Backspace') && inTable) {
-          if (active?.matches('#dataTable input[data-c]') && hasInputTextSelection(active)) {
-            return;
-          }
-          e.preventDefault();
-          handleDeleteSelection();
-          return;
-        }
-
-        if (!(e.ctrlKey || e.metaKey)) return;
-        if (e.key === 'c' || e.key === 'C') {
-          const handled = await copyFromTable();
-          if (handled) e.preventDefault();
-        } else if (e.key === 'v' || e.key === 'V') {
-          e.preventDefault();
-          pasteToTable();
-        }
-      };
-    }
-
-    function getHeaders() {
+    function metricColKeys(metricName) {
       return [
-        MONTH_KEY,
-        ...metrics.flatMap(m => [
-          `去年${m.name}`,
-          `当年${m.name}`,
-          `${m.name}环比上月`,
-          `${m.name}同比`,
-        ]),
+        `去年${metricName}`,
+        `当年${metricName}`,
+        `${metricName}环比上月`,
+        `${metricName}同比`,
       ];
     }
 
-    function metricColKeys(name) {
-      return [
-        `去年${name}`,
-        `当年${name}`,
-        `${name}环比上月`,
-        `${name}同比`,
-      ];
+    function isCalcColumn(key) {
+      return key.endsWith('环比上月') || key.endsWith('同比');
     }
 
-    function keysForMetric(name) {
-      return {
-        last: `去年${name}`,
-        cur: `当年${name}`,
-        mom: `${name}环比上月`,
-        yoy: `${name}同比`,
-      };
+    function monthKeyFromCell(raw) {
+      if (!raw) return '';
+      const s = String(raw).trim();
+      const m = s.match(/(\d{1,2})/);
+      return m ? `${m[1]}月` : s;
     }
 
-    function emptyRow(month = '') {
-      const row = { [MONTH_KEY]: month };
-      getHeaders().slice(1).forEach(h => { row[h] = null; });
-      return row;
+    function parseInput(raw) {
+      if (raw === '' || raw == null) return null;
+      const n = parseFloat(raw);
+      return isNaN(n) ? null : n;
     }
 
-    function normalizeRow(row) {
-      const out = { [MONTH_KEY]: row[MONTH_KEY] ?? row['月份'] ?? '' };
-      getHeaders().slice(1).forEach(h => {
-        out[h] = row[h] != null ? row[h] : null;
-      });
-      return out;
-    }
-
-    function nextMonthAfter(last) {
-      if (!last || !/^\d{4}-\d{2}$/.test(last)) return '';
-      const [y, m] = last.split('-').map(Number);
-      const d = new Date(y, m, 1);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    }
-
-    function refreshMetricSelects() {
-      const delSel = document.getElementById('delMetricSelect');
-      const filterSel = document.getElementById('metricFilter');
-      const filterVal = filterSel.value;
-
-      delSel.innerHTML = metrics.map(m =>
-        `<option value="${m.name}">${m.name}</option>`
-      ).join('');
-
-      filterSel.innerHTML = '<option value="all">全部 ' + metrics.length + ' 项</option>' +
-        metrics.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
-
-      if (filterVal === 'all' || metrics.some(m => m.name === filterVal)) {
-        filterSel.value = filterVal;
-      }
-    }
-
-    function addMetric() {
-      const name = prompt('请输入指标名称（将自动增加「去年/当年/环比/同比」4 列）', '');
-      if (!name?.trim()) return;
-      const trimmed = name.trim();
-      if (metrics.some(m => m.name === trimmed)) {
-        alert('该指标已存在');
-        return;
-      }
-      const type = prompt('指标类型：count=数量 / rate=比率 / duration=时长', 'count') || 'count';
-      const validTypes = ['count', 'rate', 'duration'];
-      metrics.push({ name: trimmed, type: validTypes.includes(type) ? type : 'count' });
-      tableData = tableData.map(normalizeRow);
-      recalcDerivedFields();
-      refreshMetricSelects();
-      renderTable();
-      setStatus(`已添加指标「${trimmed}」`);
-    }
-
-    function removeMetric(name, opts = {}) {
-      if (!name) return;
-      if (metrics.length <= 1) {
-        alert('至少保留 1 个指标列');
-        return;
-      }
-      if (!opts.skipConfirm && !confirm(`确定删除指标「${name}」及其 4 列数据？`)) return;
-      const keys = metricColKeys(name);
-      metrics = metrics.filter(m => m.name !== name);
-      tableData = tableData.map(row => {
-        const r = normalizeRow(row);
-        keys.forEach(k => delete r[k]);
-        return r;
-      });
-      recalcDerivedFields();
-      refreshMetricSelects();
-      renderTable();
-      if (!opts.silent) setStatus(`已删除指标「${name}」`);
-    }
-
-    function addRow() {
-      readTableFromDom();
-      const last = tableData[tableData.length - 1];
-      const nextMonth = nextMonthAfter(last?.[MONTH_KEY]);
-      tableData.push(emptyRow(nextMonth));
-      recalcDerivedFields();
-      renderTable();
-      setStatus(`已增加 1 行，共 ${tableData.length} 行`);
-    }
-
-    function deleteSelectedRows() {
-      readTableFromDom();
-      if (!selectedRows.size) {
-        alert('请先勾选要删除的行');
-        return;
-      }
-      if (!confirm(`确定删除选中的 ${selectedRows.size} 行？`)) return;
-      tableData = tableData.filter((_, i) => !selectedRows.has(i));
-      selectedRows.clear();
-      if (!tableData.length) tableData = [emptyRow()];
-      recalcDerivedFields();
-      renderTable();
-      setStatus(`已删除，剩余 ${tableData.length} 行`);
-    }
-
-    function deleteRowAt(index) {
-      readTableFromDom();
-      if (tableData.length <= 1) {
-        alert('至少保留 1 行');
-        return;
-      }
-      tableData.splice(index, 1);
-      selectedRows = new Set([...selectedRows].filter(i => i !== index).map(i => (i > index ? i - 1 : i)));
-      recalcDerivedFields();
-      renderTable();
-      setStatus(`已删除第 ${index + 1} 行`);
-    }
-
-    function fmtPct(v) {
-      if (v == null || Number.isNaN(v)) return '';
-      return (v * 100).toFixed(2) + '%';
-    }
-
-    function parseInput(v) {
-      if (v == null || v === '' || v === '/' || v === '-') return null;
-      const s = String(v).trim().replace(/%/g, '');
-      if (['#VALUE!', '#DIV/0!', '#N/A'].includes(s)) return null;
-      const n = Number(s);
-      return Number.isFinite(n) ? n : null;
-    }
-
-    function formatCalcValue(v) {
-      if (v == null || Number.isNaN(v)) return '';
-      const s = Number(v).toPrecision(6).replace(/\.?0+$/, '');
-      return s;
-    }
-
-    function calcChangeRate(cur, base) {
-      if (cur == null || base == null || base === 0) return null;
-      return (cur - base) / base;
-    }
-
-    function sortRowsByMonth(rows) {
-      return [...rows].sort((a, b) => String(a[MONTH_KEY] || '').localeCompare(String(b[MONTH_KEY] || '')));
-    }
-
-    /** 环比：当年 vs 上月当年；同比：(当年-去年)/去年 */
     function recalcDerivedFields() {
-      const sorted = sortRowsByMonth(tableData.filter(r => r[MONTH_KEY]));
-      metrics.forEach(m => {
-        const k = keysForMetric(m.name);
-        sorted.forEach((row, i) => {
-          const cur = row[k.cur];
-          const last = row[k.last];
-          row[k.yoy] = calcChangeRate(cur, last);
-          const prevCur = i > 0 ? sorted[i - 1][k.cur] : null;
-          row[k.mom] = calcChangeRate(cur, prevCur);
+      tableData.forEach(row => {
+        metrics.forEach(m => {
+          const lastYear = row[`去年${m.name}`];
+          const currentYear = row[`当年${m.name}`];
+          if (lastYear != null && currentYear != null) {
+            row[`${m.name}环比上月`] = lastYear !== 0 ? ((currentYear - lastYear) / lastYear * 100) : null;
+            row[`${m.name}同比`] = lastYear !== 0 ? ((currentYear - lastYear) / lastYear * 100) : null;
+          }
         });
       });
-    }
-
-    function syncCalcCellsToDom() {
-      document.querySelectorAll('#dataTable input[data-calc]').forEach(inp => {
-        const r = +inp.dataset.r;
-        const c = inp.dataset.c;
-        if (!tableData[r]) return;
-        inp.value = formatCalcValue(tableData[r][c]);
-      });
-    }
-
-    function isCalcColumn(col) {
-      return col.endsWith('环比上月') || col.endsWith('同比');
-    }
-
-    function disposeAllCharts() {
-      chartInstances.forEach(({ chart }) => {
-        try { chart.dispose(); } catch (_) { /* ignore */ }
-      });
-      chartInstances = [];
-      if (resizeHandler) {
-        window.removeEventListener('resize', resizeHandler);
-        resizeHandler = null;
-      }
-    }
-
-    /** 去年/当年：存在任一值 >1 按数值展示，否则（均 ≤1）按百分比展示 */
-    function detectBarDisplayMode(metric, rows) {
-      const k = keysForMetric(metric.name);
-      const vals = [];
-      rows.forEach(r => {
-        [r[k.last], r[k.cur]].forEach(v => {
-          if (v != null && Number.isFinite(v)) vals.push(Math.abs(v));
-        });
-      });
-      if (!vals.length) return metric.type === 'rate' ? 'percent' : 'number';
-      return Math.max(...vals) > 1 ? 'number' : 'percent';
-    }
-
-    function barDisplayValue(v, mode) {
-      if (v == null) return null;
-      return mode === 'percent' ? v * 100 : v;
-    }
-
-    function formatBarAxisLabel(mode) {
-      if (mode === 'percent') {
-        return v => (v >= 10 ? v.toFixed(0) : v.toFixed(1)) + '%';
-      }
-      return v => {
-        const abs = Math.abs(v);
-        if (abs >= 10000) return (v / 10000).toFixed(1) + '万';
-        if (abs >= 1000) return (v / 1000).toFixed(1) + 'k';
-        if (abs >= 100) return Math.round(v).toString();
-        if (abs >= 10) return v.toFixed(0);
-        return v.toFixed(1);
-      };
-    }
-
-    function formatBarTooltip(val, mode) {
-      if (val == null) return '-';
-      if (mode === 'percent') return Number(val).toFixed(2) + '%';
-      const v = Number(val);
-      if (Math.abs(v) >= 1000) return v.toLocaleString('zh-CN', { maximumFractionDigits: 2 });
-      return Math.abs(v) >= 10 ? Math.round(v).toString() : v.toFixed(2);
-    }
-
-    function getChartLayout(monthCount) {
-      const n = Math.max(monthCount, 1);
-      const height = Math.min(520, Math.max(360, 320 + n * 10));
-      const barMaxWidth = Math.min(36, Math.max(10, Math.floor(520 / n / 2.4)));
-      const rotate = n > 10 ? 40 : n > 6 ? 25 : 0;
-      const gridBottom = rotate > 0 ? (rotate >= 40 ? 64 : 52) : 36;
-      const gridLeft = 8;
-      return { height, barMaxWidth, rotate, gridBottom, gridLeft, barCategoryGap: n > 14 ? '12%' : '18%' };
-    }
-
-    function buildChartOption(metric, rows) {
-      const { name } = metric;
-      const barMode = detectBarDisplayMode(metric, rows);
-      const k = keysForMetric(name);
-      const months = rows.map(r => r[MONTH_KEY]);
-      const monthCount = months.length;
-      const layout = getChartLayout(monthCount);
-
-      const lastYear = rows.map(r => barDisplayValue(r[k.last], barMode));
-      const currentYear = rows.map(r => barDisplayValue(r[k.cur], barMode));
-      const mom = rows.map(r => r[k.mom] != null ? r[k.mom] * 100 : null);
-      const yoy = rows.map(r => r[k.yoy] != null ? r[k.yoy] * 100 : null);
-
-      const barVals = [...lastYear, ...currentYear].filter(v => v != null);
-      let barMax = barVals.length ? Math.max(...barVals) : 1;
-      if (barMode === 'percent') barMax = Math.min(100, Math.max(barMax, 10));
-      else barMax = Math.ceil(barMax * 1.12);
-
-      const lineVals = [...mom, ...yoy].filter(v => v != null);
-      const lineAbsMax = lineVals.length ? Math.max(...lineVals.map(Math.abs)) : 100;
-      const lineBound = Math.ceil(Math.max(lineAbsMax * 1.25, 30) / 10) * 10;
-      const lineMax = Math.min(5000, Math.max(lineBound, 50));
-      const lineMin = -lineMax;
-
-      const labelFs = 10;
-      const labelStep = 2;
-
-      function shouldShowLineLabelAt(index) {
-        if (monthCount <= 0 || index < 0) return false;
-        if (index === monthCount - 1) return true;
-        return index % labelStep === 0;
-      }
-
-      function lineLabel(lineColor, isMom) {
-        return {
-          show: true,
-          fontSize: labelFs,
-          color: lineColor,
-          fontWeight: 700,
-          position: isMom ? 'top' : 'bottom',
-          distance: 6,
-          textBorderColor: '#fff',
-          textBorderWidth: 2,
-          formatter: p => {
-            if (p.value == null) return '';
-            if (!shouldShowLineLabelAt(p.dataIndex)) return '';
-            return Number(p.value).toFixed(1) + '%';
-          },
-        };
-      }
-
-      return {
-        backgroundColor: '#FFFFFF',
-        title: { show: false },
-        labelLayout: { hideOverlap: true, moveOverlap: 'shiftY' },
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: { type: 'shadow' },
-          formatter(params) {
-            let html = `<strong>${params[0].axisValue}</strong><br/>`;
-            params.forEach(p => {
-              let val;
-              if (p.seriesName.includes('环比') || p.seriesName.includes('同比')) {
-                val = p.value != null ? Number(p.value).toFixed(2) + '%' : '-';
-              } else {
-                val = formatBarTooltip(p.value, barMode);
-              }
-              html += `${p.marker}${p.seriesName}: ${val}<br/>`;
-            });
-            return html;
-          },
-        },
-        legend: {
-          data: [`去年${name}`, `当年${name}`, `${name}环比上月`, `${name}同比`],
-          top: 8,
-          left: 'center',
-          itemGap: 16,
-          textStyle: { fontSize: 11, color: '#5C6B7A' },
-        },
-        grid: {
-          left: layout.gridLeft,
-          right: 8,
-          top: 32,
-          bottom: layout.gridBottom,
-          containLabel: true,
-        },
-        xAxis: {
-          type: 'category',
-          data: months,
-          axisLabel: {
-            fontSize: 11,
-            color: '#6B7785',
-            rotate: layout.rotate,
-            interval: monthCount > 18 ? 1 : 0,
-          },
-          axisLine: { lineStyle: { color: '#E2E6EB' } },
-        },
-        yAxis: [
-          {
-            type: 'value',
-            min: 0,
-            max: barMax,
-            splitNumber: 5,
-            axisLabel: { formatter: formatBarAxisLabel(barMode), fontSize: 11 },
-            splitLine: { lineStyle: { color: '#ebeef5', type: 'dashed' } },
-          },
-          {
-            type: 'value',
-            min: lineMin,
-            max: lineMax,
-            splitNumber: 5,
-            axisLabel: { formatter: v => v.toFixed(0) + '%', fontSize: 11 },
-            splitLine: { show: false },
-          },
-        ],
-        series: [
-          {
-            name: `去年${name}`,
-            type: 'bar',
-            barGap: 0,
-            barMaxWidth: layout.barMaxWidth,
-            barCategoryGap: layout.barCategoryGap,
-            itemStyle: { color: COLORS.lastYear, borderRadius: [4, 4, 0, 0] },
-            data: lastYear,
-            label: { show: false },
-          },
-          {
-            name: `当年${name}`,
-            type: 'bar',
-            barMaxWidth: layout.barMaxWidth,
-            barCategoryGap: layout.barCategoryGap,
-            itemStyle: { color: COLORS.currentYear, borderRadius: [4, 4, 0, 0] },
-            data: currentYear,
-            label: { show: false },
-          },
-          {
-            name: `${name}环比上月`,
-            type: 'line',
-            yAxisIndex: 1,
-            smooth: true,
-            symbol: 'circle',
-            symbolSize: 7,
-            lineStyle: { width: 2, color: COLORS.mom },
-            itemStyle: { color: COLORS.mom },
-            data: mom,
-            label: lineLabel(COLORS.mom, true),
-          },
-          {
-            name: `${name}同比`,
-            type: 'line',
-            yAxisIndex: 1,
-            smooth: true,
-            symbol: 'circle',
-            symbolSize: 7,
-            lineStyle: { width: 2, color: COLORS.yoy },
-            itemStyle: { color: COLORS.yoy },
-            data: yoy,
-            label: lineLabel(COLORS.yoy, false),
-          },
-        ],
-      };
     }
 
     function renderTable() {
       const table = document.getElementById('dataTable');
-      const headers = getHeaders();
-      let html = '<thead>';
+      table.innerHTML = '';
 
-      html += '<tr><th class="col-ops" rowspan="2"><input type="checkbox" id="chkAllRows" title="全选"/></th>';
-      const monthCol = colKeyToIndex(MONTH_KEY);
-      html += `<th rowspan="2" class="col-month th-selectable" data-col="${monthCol}" title="点击选中整列">月份</th>`;
-      metrics.forEach(m => {
-        const keys = metricColKeys(m.name);
-        const c1 = colKeyToIndex(keys[0]);
-        const c2 = colKeyToIndex(keys[keys.length - 1]);
-        html += `<th colspan="4" class="th-metric th-selectable" data-metric="${escAttr(m.name)}" data-c1="${c1}" data-c2="${c2}" title="点击选中该指标全部 4 列；Shift+点击多选">
-          ${m.name}
-          <button type="button" class="btn-icon btn-del-col" data-metric="${escAttr(m.name)}" title="删除该指标">×</button>
-        </th>`;
+      const keys = getDataColumnKeys();
+      const headerRow = table.insertRow();
+      headerRow.insertCell().innerHTML = '<input type="checkbox" id="checkAll" />';
+
+      keys.forEach((key, idx) => {
+        const th = headerRow.insertCell();
+        th.className = key === MONTH_KEY ? 'col-month' : key.includes('环比') || key.includes('同比') ? 'th-metric' : '';
+        th.innerHTML = `<strong>${key}</strong>`;
+        if (key.includes('环比') || key.includes('同比')) {
+          th.innerHTML += `<button class="btn-icon btn-del-col" onclick="deleteMetricColumn('${key}')">✕</button>`;
+        }
       });
-      html += '</tr><tr>';
-      metrics.forEach(m => {
-        const labels = ['去年', '当年', '环比', '同比'];
-        metricColKeys(m.name).forEach((h, i) => {
-          const ci = colKeyToIndex(h);
-          html += `<th class="th-selectable th-subcol" data-col="${ci}" title="点击选中「${labels[i]}」列；Shift+点击扩展">${labels[i]}</th>`;
+
+      tableData.forEach((row, r) => {
+        const tr = table.insertRow();
+        const checkCell = tr.insertCell();
+        checkCell.className = 'col-ops';
+        checkCell.innerHTML = `<input type="checkbox" data-row="${r}" />`;
+
+        keys.forEach((key, c) => {
+          const td = tr.insertCell();
+          if (key === MONTH_KEY) td.className = 'col-month';
+          const isCalc = isCalcColumn(key);
+          const value = row[key];
+          const displayValue = value == null ? '' : (isCalc ? value.toFixed(2) : value);
+          td.innerHTML = `<input type="text" data-r="${r}" data-col="${c}" data-key="${key}" value="${escAttr(displayValue)}" ${isCalc ? 'class="cell-calc"' : ''} />`;
         });
       });
-      html += '</tr></thead><tbody>';
 
-      tableData.forEach((row, ri) => {
-        const checked = selectedRows.has(ri) ? ' checked' : '';
-        html += '<tr>';
-        html += `<td class="col-ops">
-          <input type="checkbox" class="row-chk" data-r="${ri}"${checked}/>
-          <button type="button" class="btn-icon" data-del-row="${ri}" title="删除本行">×</button>
-        </td>`;
-        const monthVal = row[MONTH_KEY] ?? '';
-        const monthCol = colKeyToIndex(MONTH_KEY);
-        html += `<td class="col-month"><input data-r="${ri}" data-col="${monthCol}" data-c="${MONTH_KEY}" value="${escAttr(monthVal)}" placeholder="2025-01"/></td>`;
-        metrics.forEach(m => {
-          metricColKeys(m.name).forEach(h => {
-            const val = row[h];
-            const display = val == null ? '' : val;
-            const calc = isCalcColumn(h);
-            const ci = colKeyToIndex(h);
-            const calcAttr = calc ? ' readonly data-calc="1"' : '';
-            const title = calc ? ' title="根据去年/当年自动计算"' : ' title="支持 Ctrl+C/V 批量复制粘贴"';
-            const cls = calc ? 'cell-calc' : '';
-            html += `<td><input data-r="${ri}" data-col="${ci}" data-c="${h}"${cls ? ` class="${cls}"` : ''} value="${escAttr(display)}" placeholder="-"${calcAttr}${title}/></td>`;
+      document.querySelectorAll('#dataTable input[type="text"]').forEach(inp => {
+        inp.addEventListener('focus', handleCellFocus);
+        inp.addEventListener('blur', handleCellBlur);
+        inp.addEventListener('keydown', handleCellKeydown);
+        inp.addEventListener('change', handleCellChange);
+      });
+
+      document.getElementById('checkAll').addEventListener('change', (e) => {
+        document.querySelectorAll('#dataTable input[type="checkbox"][data-row]').forEach(cb => cb.checked = e.target.checked);
+      });
+    }
+
+    function handleCellFocus(e) {
+      const r = +e.target.dataset.r;
+      const c = +e.target.dataset.col;
+      focusCell = { r, c };
+      selectionAnchor = { r, c };
+      selectionEnd = null;
+      applySelectionHighlight();
+      e.target.classList.add('cell-focus');
+    }
+
+    function handleCellBlur(e) {
+      e.target.classList.remove('cell-focus');
+    }
+
+    function handleCellKeydown(e) {
+      const r = +e.target.dataset.r;
+      const c = +e.target.dataset.col;
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nextR = r + 1;
+        if (nextR < tableData.length) {
+          const nextCell = document.querySelector(`#dataTable input[data-r="${nextR}"][data-col="${c}"]`);
+          if (nextCell) nextCell.focus();
+        }
+      } else if (e.key === 'Delete') {
+        e.preventDefault();
+        const range = getSelectionRange();
+        for (let rr = range.r1; rr <= range.r2; rr++) {
+          for (let cc = range.c1; cc <= range.c2; cc++) {
+            const key = getDataColumnKeys()[cc];
+            if (!isCalcColumn(key)) tableData[rr][key] = null;
+          }
+        }
+        recalcDerivedFields();
+        renderTable();
+      } else if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'c') {
+          e.preventDefault();
+          copySelection();
+        } else if (e.key === 'v') {
+          e.preventDefault();
+          pasteSelection();
+        }
+      }
+    }
+
+    function handleCellChange(e) {
+      const r = +e.target.dataset.r;
+      const key = e.target.dataset.key;
+      tableData[r][key] = parseInput(e.target.value);
+      recalcDerivedFields();
+      renderTable();
+    }
+
+    function copySelection() {
+      const range = getSelectionRange();
+      const lines = [];
+      for (let r = range.r1; r <= range.r2; r++) {
+        const cells = [];
+        for (let c = range.c1; c <= range.c2; c++) {
+          const key = getDataColumnKeys()[c];
+          cells.push(formatCellForCopy(tableData[r][key], key));
+        }
+        lines.push(cells.join('\t'));
+      }
+      navigator.clipboard.writeText(lines.join('\n'));
+      setStatus('已复制到剪贴板');
+    }
+
+    function pasteSelection() {
+      navigator.clipboard.readText().then(text => {
+        const grid = parseClipboardGrid(text);
+        if (!grid.length) return;
+
+        let startR = focusCell.r;
+        let startC = focusCell.c;
+
+        if (isLikelyHeaderRow(grid[0])) {
+          inferMetricsFromHeaders(grid[0]);
+          grid.shift();
+        }
+
+        grid.forEach((row, i) => {
+          const rr = startR + i;
+          if (rr >= tableData.length) tableData.push({});
+          row.forEach((cell, j) => {
+            const cc = startC + j;
+            const key = getDataColumnKeys()[cc];
+            if (key) setCellFromPaste(tableData[rr], key, cell);
           });
         });
-        html += '</tr>';
+
+        recalcDerivedFields();
+        renderTable();
+        setStatus(`已粘贴 ${grid.length} 行数据`);
       });
-      html += '</tbody>';
-      table.innerHTML = html;
-
-      document.getElementById('chkAllRows')?.addEventListener('change', e => {
-        const on = e.target.checked;
-        selectedRows = on ? new Set(tableData.map((_, i) => i)) : new Set();
-        table.querySelectorAll('.row-chk').forEach(c => { c.checked = on; });
-      });
-
-      table.querySelectorAll('.row-chk').forEach(chk => {
-        chk.addEventListener('change', e => {
-          const r = +e.target.dataset.r;
-          if (e.target.checked) selectedRows.add(r);
-          else selectedRows.delete(r);
-          const all = table.querySelectorAll('.row-chk');
-          const chkAll = document.getElementById('chkAllRows');
-          if (chkAll) chkAll.checked = all.length && [...all].every(c => c.checked);
-        });
-      });
-
-      table.querySelectorAll('[data-del-row]').forEach(btn => {
-        btn.addEventListener('click', () => deleteRowAt(+btn.dataset.delRow));
-      });
-
-      table.querySelectorAll('.btn-del-col').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          removeMetric(btn.dataset.metric);
-        });
-      });
-
-      table.querySelectorAll('input[data-c]').forEach(inp => {
-        const handler = e => {
-          const r = +e.target.dataset.r;
-          const c = e.target.dataset.c;
-          if (c === MONTH_KEY) {
-            tableData[r][c] = e.target.value.trim();
-            recalcDerivedFields();
-            syncCalcCellsToDom();
-            return;
-          }
-          if (isCalcColumn(c)) return;
-          tableData[r][c] = parseInput(e.target.value);
-          if (c.startsWith('去年') || c.startsWith('当年')) {
-            recalcDerivedFields();
-            syncCalcCellsToDom();
-          }
-        };
-        inp.addEventListener('change', handler);
-        inp.addEventListener('input', e => {
-          const c = e.target.dataset.c;
-          if (c.startsWith('去年') || c.startsWith('当年')) handler(e);
-        });
-      });
-
-      bindTableClipboard();
-      applySelectionHighlight();
-    }
-
-    function readTableFromDom() {
-      document.querySelectorAll('#dataTable input[data-c]').forEach(inp => {
-        const r = +inp.dataset.r;
-        const c = inp.dataset.c;
-        if (!tableData[r]) return;
-        tableData[r][c] = c === MONTH_KEY ? inp.value.trim() : parseInput(inp.value);
-      });
-    }
-
-    function renderCharts() {
-      readTableFromDom();
-      recalcDerivedFields();
-      syncCalcCellsToDom();
-      const validRows = sortRowsByMonth(tableData.filter(r => r[MONTH_KEY]));
-      if (!validRows.length) {
-        setStatus('请至少填写一行月份');
-        return;
-      }
-
-      const filter = document.getElementById('metricFilter').value;
-      const chartMetrics = filter === 'all' ? metrics : metrics.filter(m => m.name === filter);
-
-      disposeAllCharts();
-
-      const grid = document.getElementById('chartsGrid');
-      const empty = document.getElementById('emptyHint');
-      grid.innerHTML = '';
-      grid.style.display = 'grid';
-      empty.style.display = 'none';
-
-      chartMetrics.forEach((metric, idx) => {
-        const barMode = detectBarDisplayMode(metric, validRows);
-        const layout = getChartLayout(validRows.length);
-        const modeLabel = barMode === 'percent' ? '柱：百分比' : '柱：数值';
-        const card = document.createElement('div');
-        card.className = 'chart-card';
-        card.innerHTML = `
-          <div class="chart-card-head">
-            <span>${metric.name}<span class="chart-mode-tag">${modeLabel}</span></span>
-            <button class="btn btn-secondary btn-export-one">导出 PNG</button>
-          </div>
-          <div class="chart-box" id="chart-${idx}-${Date.now()}"></div>
-        `;
-        grid.appendChild(card);
-        const el = card.querySelector('.chart-box');
-        el.style.height = layout.height + 'px';
-        const chart = echarts.init(el);
-        chart.setOption(buildChartOption(metric, validRows), { notMerge: true });
-        chartInstances.push({ chart, name: metric.name, el });
-        card.querySelector('.btn-export-one').addEventListener('click', () => exportChart(chart, metric.name));
-      });
-
-      resizeHandler = () => {
-        chartInstances.forEach(({ chart, el }) => {
-          if (el?.isConnected) chart.resize();
-        });
-      };
-      window.addEventListener('resize', resizeHandler);
-      requestAnimationFrame(() => chartInstances.forEach(({ chart }) => chart.resize()));
-      setStatus(`已生成 ${chartMetrics.length} 张图表，共 ${validRows.length} 个月份`);
-    }
-
-    function cropPngDataUrl(dataUrl, padding) {
-      const pad = padding == null ? 8 : padding;
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = function () {
-          const w = img.width;
-          const h = img.height;
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          const pixels = ctx.getImageData(0, 0, w, h).data;
-          let minX = w, minY = h, maxX = 0, maxY = 0;
-          for (let y = 0; y < h; y++) {
-            for (let x = 0; x < w; x++) {
-              const i = (y * w + x) * 4;
-              if (pixels[i + 3] < 10) continue;
-              if (pixels[i] > 252 && pixels[i + 1] > 252 && pixels[i + 2] > 252) continue;
-              if (x < minX) minX = x;
-              if (y < minY) minY = y;
-              if (x > maxX) maxX = x;
-              if (y > maxY) maxY = y;
-            }
-          }
-          if (minX >= maxX || minY >= maxY) {
-            resolve(dataUrl);
-            return;
-          }
-          minX = Math.max(0, minX - pad);
-          minY = Math.max(0, minY - pad);
-          maxX = Math.min(w - 1, maxX + pad);
-          maxY = Math.min(h - 1, maxY + pad);
-          const cw = maxX - minX + 1;
-          const ch = maxY - minY + 1;
-          const out = document.createElement('canvas');
-          out.width = cw;
-          out.height = ch;
-          out.getContext('2d').drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
-          resolve(out.toDataURL('image/png'));
-        };
-        img.onerror = reject;
-        img.src = dataUrl;
-      });
-    }
-
-    async function exportChart(chart, name) {
-      const raw = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#FFFFFF' });
-      const url = await cropPngDataUrl(raw, 8);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${name}.png`;
-      a.click();
-    }
-
-    function setStatus(msg) {
-      document.getElementById('statusText').textContent = msg;
-    }
-
-
-    /** Excel 日期序列 → YYYY-MM（与 Excel 1900 历一致，不受浏览器时区影响） */
-    function excelSerialToMonth(serial) {
-      const n = Math.floor(Number(serial));
-      if (!Number.isFinite(n) || n < 30000) return '';
-      const epoch = Date.UTC(1899, 11, 30);
-      const d = new Date(epoch + n * 86400000);
-      const y = d.getUTCFullYear();
-      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-      return `${y}-${m}`;
-    }
-
-    function monthKeyFromCell(v) {
-      if (v == null || v === '') return '';
-      if (v instanceof Date) {
-        const y = v.getFullYear();
-        const m = v.getMonth();
-        const d = v.getDate();
-        const serial = Math.round((Date.UTC(y, m, d) - Date.UTC(1899, 11, 30)) / 86400000);
-        return excelSerialToMonth(serial);
-      }
-      const n = Number(v);
-      if (Number.isFinite(n) && n > 30000) return excelSerialToMonth(n);
-      const s = String(v).trim();
-      if (/^\d{4}-\d{2}/.test(s)) return s.slice(0, 7);
-      if (/^\d{5,}(\.\d+)?$/.test(s)) return excelSerialToMonth(Number(s));
-      return s;
-    }
-
-    function parseExcelRows(rows) {
-      if (!rows.length) return [];
-      const header = rows[0].map(c => String(c ?? '').trim());
-      const map = {};
-      header.forEach((h, i) => {
-        if (!h) return;
-        map[h] = i;
-        const norm = normalizeImportHeader(h);
-        if (norm && norm !== h) map[norm] = i;
-      });
-
-      inferMetricsFromHeaders(header);
-
-      const result = [];
-      for (let i = 1; i < rows.length; i++) {
-        const r = rows[i];
-        if (!r || r.every(c => c == null || c === '')) continue;
-        const month = monthKeyFromCell(r[map['月份']] ?? r[map['month']]);
-        if (!month) continue;
-        const row = { [MONTH_KEY]: month };
-        getHeaders().slice(1).forEach(h => {
-          const idx = map[h];
-          row[h] = idx != null ? parseInput(r[idx]) : null;
-        });
-        result.push(normalizeRow(row));
-      }
-      return result;
     }
 
     function inferMetricsFromHeaders(headerList) {
@@ -1604,6 +1064,23 @@
       return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
     }
 
+    function parseExcelRows(rows) {
+      if (!rows.length) return [];
+      let startIdx = 0;
+      if (isLikelyHeaderRow(rows[0])) {
+        inferMetricsFromHeaders(rows[0]);
+        startIdx = 1;
+      }
+      return rows.slice(startIdx).map(row => {
+        const obj = { [MONTH_KEY]: null };
+        getDataColumnKeys().slice(1).forEach((key, idx) => {
+          obj[key] = parseInput(row[idx + 1]);
+        });
+        if (row[0]) obj[MONTH_KEY] = monthKeyFromCell(row[0]);
+        return obj;
+      });
+    }
+
     function applyImportedRows(rows, sourceLabel) {
       const parsed = parseExcelRows(rows);
       if (!parsed.length) {
@@ -1625,53 +1102,255 @@
         const buf = await res.arrayBuffer();
         applyImportedRows(parseExcelBuffer(buf), '模板');
       } catch (err) {
-        console.warn('模板 xlsx 加载失败，尝试 JSON 备用', err);
-        await loadSampleDataFallback();
+        setStatus(`加载失败: ${err.message}`);
       }
     }
 
-    async function loadSampleDataFallback() {
-      metrics = DEFAULT_METRICS.map(m => ({ ...m }));
-      const res = await fetch(SAMPLE_DATA_URL);
-      if (!res.ok) throw new Error('json fetch failed');
-      tableData = (await res.json()).map(normalizeRow);
-      selectedRows.clear();
-      recalcDerivedFields();
-      refreshMetricSelects();
-      renderTable();
-      setStatus(`已加载备用数据 ${tableData.length} 行`);
-    }
-
-    document.getElementById('excelFile').addEventListener('change', async e => {
-      const file = e.target.files[0];
-      if (!file) return;
+    async function loadSampleData() {
+      setStatus('正在加载示例数据…');
       try {
-        const buf = await file.arrayBuffer();
-        applyImportedRows(parseExcelBuffer(buf), '文件');
-      } catch {
-        setStatus('Excel 解析失败，请检查表头是否与模板一致');
+        const res = await fetch(SAMPLE_DATA_URL);
+        if (!res.ok) throw new Error('sample data fetch failed');
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          tableData = data;
+          recalcDerivedFields();
+          refreshMetricSelects();
+          renderTable();
+          setStatus(`已加载示例数据 ${tableData.length} 行`);
+        }
+      } catch (err) {
+        setStatus(`加载失败: ${err.message}`);
       }
-      e.target.value = '';
+    }
+
+    function setStatus(msg) {
+      document.getElementById('statusText').textContent = msg;
+    }
+
+    function refreshMetricSelects() {
+      const delSelect = document.getElementById('delMetricSelect');
+      delSelect.innerHTML = '';
+      metrics.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.textContent = m.name;
+        delSelect.appendChild(opt);
+      });
+
+      const filterSelect = document.getElementById('metricFilter');
+      filterSelect.innerHTML = '<option value="all">全部 ' + metrics.length + ' 项</option>';
+      metrics.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.textContent = m.name;
+        filterSelect.appendChild(opt);
+      });
+    }
+
+    function deleteMetricColumn(key) {
+      const metricName = key.replace(/环比上月|同比/g, '');
+      if (confirm(`确定删除指标"${metricName}"吗？`)) {
+        metrics = metrics.filter(m => m.name !== metricName);
+        tableData.forEach(row => {
+          metricColKeys(metricName).forEach(k => delete row[k]);
+        });
+        refreshMetricSelects();
+        renderTable();
+        setStatus(`已删除指标"${metricName}"`);
+      }
+    }
+
+    document.getElementById('btnAddRow').addEventListener('click', () => {
+      tableData.push({});
+      renderTable();
+      setStatus('已增加一行');
     });
 
-    document.getElementById('btnLoadSample').addEventListener('click', loadTemplateXlsx);
-    document.getElementById('btnAddRow').addEventListener('click', addRow);
-    document.getElementById('btnDelRows').addEventListener('click', deleteSelectedRows);
-    document.getElementById('btnAddMetric').addEventListener('click', addMetric);
+    document.getElementById('btnDelRows').addEventListener('click', () => {
+      const checked = Array.from(document.querySelectorAll('#dataTable input[type="checkbox"][data-row]:checked'))
+        .map(cb => +cb.dataset.row)
+        .sort((a, b) => b - a);
+      checked.forEach(r => tableData.splice(r, 1));
+      renderTable();
+      setStatus(`已删除 ${checked.length} 行`);
+    });
+
+    document.getElementById('btnAddMetric').addEventListener('click', () => {
+      const name = prompt('请输入新指标名称：');
+      if (name && !metrics.find(m => m.name === name)) {
+        metrics.push({ name, type: 'count' });
+        refreshMetricSelects();
+        renderTable();
+        setStatus(`已添加指标"${name}"`);
+      }
+    });
+
     document.getElementById('btnDelMetric').addEventListener('click', () => {
-      removeMetric(document.getElementById('delMetricSelect').value);
-    });
-    document.getElementById('btnCopy').addEventListener('click', copyFromTable);
-    document.getElementById('btnPaste').addEventListener('click', () => pasteToTable());
-    document.getElementById('btnGenerate').addEventListener('click', renderCharts);
-    document.getElementById('btnExportAll').addEventListener('click', () => {
-      if (!chartInstances.length) { setStatus('请先生成图表'); return; }
-      chartInstances.forEach(({ chart, name }) => exportChart(chart, name));
-      setStatus('已全部触发下载');
+      const name = document.getElementById('delMetricSelect').value;
+      if (name && confirm(`确定删除指标"${name}"吗？`)) {
+        metrics = metrics.filter(m => m.name !== name);
+        tableData.forEach(row => {
+          metricColKeys(name).forEach(k => delete row[k]);
+        });
+        refreshMetricSelects();
+        renderTable();
+        setStatus(`已删除指标"${name}"`);
+      }
     });
 
+    document.getElementById('btnCopy').addEventListener('click', copySelection);
+    document.getElementById('btnPaste').addEventListener('click', pasteSelection);
+
+    document.getElementById('excelFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            applyImportedRows(parseExcelBuffer(ev.target.result), '导入文件');
+          } catch (err) {
+            setStatus(`导入失败: ${err.message}`);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    });
+
+    document.getElementById('btnLoadSample').addEventListener('click', loadSampleData);
+    document.getElementById('importLink').addEventListener('click', () => {
+      document.getElementById('excelFile').click();
+    });
+
+    document.getElementById('btnGenerate').addEventListener('click', () => {
+      if (tableData.length === 0) {
+        setStatus('请先录入数据');
+        return;
+      }
+
+      const filterValue = document.getElementById('metricFilter').value;
+      const metricsToShow = filterValue === 'all' ? metrics : metrics.filter(m => m.name === filterValue);
+
+      const chartsGrid = document.getElementById('chartsGrid');
+      const emptyHint = document.getElementById('emptyHint');
+
+      chartsGrid.innerHTML = '';
+      chartInstances.forEach(instance => instance.dispose());
+      chartInstances = [];
+
+      metricsToShow.forEach(metric => {
+        const card = document.createElement('div');
+        card.className = 'chart-card';
+        card.innerHTML = `
+          <div class="chart-card-header">
+            <div class="chart-card-title">${metric.name}</div>
+            <div class="chart-card-tag">${metric.type}</div>
+          </div>
+          <div class="chart-box" id="chart-${metric.name}"></div>
+        `;
+        chartsGrid.appendChild(card);
+
+        const chartDom = card.querySelector('.chart-box');
+        const chart = echarts.init(chartDom);
+        chartInstances.push(chart);
+
+        const xAxisData = tableData.map(row => row[MONTH_KEY] || '');
+        const series = [];
+
+        const lastYearData = tableData.map(row => row[`去年${metric.name}`]);
+        const currentYearData = tableData.map(row => row[`当年${metric.name}`]);
+        const momData = tableData.map(row => row[`${metric.name}环比上月`]);
+        const yoyData = tableData.map(row => row[`${metric.name}同比`]);
+
+        if (lastYearData.some(v => v != null)) {
+          series.push({
+            name: '去年',
+            type: 'bar',
+            data: lastYearData,
+            itemStyle: { color: COLORS.lastYear },
+            yAxisIndex: 0,
+          });
+        }
+
+        if (currentYearData.some(v => v != null)) {
+          series.push({
+            name: '当年',
+            type: 'bar',
+            data: currentYearData,
+            itemStyle: { color: COLORS.currentYear },
+            yAxisIndex: 0,
+          });
+        }
+
+        if (momData.some(v => v != null)) {
+          series.push({
+            name: '环比',
+            type: 'line',
+            data: momData,
+            itemStyle: { color: COLORS.mom },
+            yAxisIndex: 1,
+            smooth: true,
+            lineStyle: { width: 2 },
+            symbolSize: 6,
+          });
+        }
+
+        if (yoyData.some(v => v != null)) {
+          series.push({
+            name: '同比',
+            type: 'line',
+            data: yoyData,
+            itemStyle: { color: COLORS.yoy },
+            yAxisIndex: 1,
+            smooth: true,
+            lineStyle: { width: 2 },
+            symbolSize: 6,
+          });
+        }
+
+        const option = {
+          title: { text: '', subtext: '' },
+          tooltip: { trigger: 'axis' },
+          legend: { data: series.map(s => s.name) },
+          xAxis: { type: 'category', data: xAxisData },
+          yAxis: [
+            { type: 'value', name: '数值' },
+            { type: 'value', name: '百分比(%)' },
+          ],
+          series: series,
+          grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        };
+
+        chart.setOption(option);
+        window.addEventListener('resize', () => chart.resize());
+      });
+
+      emptyHint.style.display = 'none';
+      chartsGrid.style.display = 'grid';
+      setStatus(`已生成 ${metricsToShow.length} 个图表`);
+    });
+
+    document.getElementById('btnExportAll').addEventListener('click', () => {
+      if (chartInstances.length === 0) {
+        setStatus('请先生成图表');
+        return;
+      }
+
+      chartInstances.forEach((instance, idx) => {
+        const url = instance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `chart-${idx + 1}.png`;
+        link.click();
+      });
+
+      setStatus(`已导出 ${chartInstances.length} 个图表`);
+    });
+
+    // 初始化
+    renderTable();
     refreshMetricSelects();
-    loadTemplateXlsx();
+    loadSampleData();
   </script>
 </body>
 </html>
